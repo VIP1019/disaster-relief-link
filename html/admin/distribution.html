@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Distribution Management</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .truck-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 16px; background: #fff; }
+        .truck-icon { width: 40px; height: 40px; background: #f4f5f7; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
+        .hub-sync { background: #172b4d; color: #fff; border-radius: 8px; padding: 16px; }
+        .log-item { display: flex; justify-content: space-between; font-size: 11px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Command Center
+                </a></li>
+                <li><a href="review-reports.html">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                    Disaster Reports
+                </a></li>
+                <li><a href="prioritize-barangays.html">
+                    <svg class="icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Priority Ranking
+                </a></li>
+                <li><a href="relief-inventory.html">
+                    <svg class="icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    Resource Inventory
+                </a></li>
+                <li><a href="distribution.html" class="active">
+                    <svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg>
+                    Distribution Management
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Distribution Management</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Active logistics and relief deployment tracking logs.</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Global View</button>
+                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Map View</button>
+                    <button class="btn btn-primary">Deploy Status</button>
+                </div>
+            </header>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 24px;" class="animate-fade-in">
+                <div class="truck-card">
+                    <div class="truck-icon"><svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg></div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle);">EN ROUTE NOW</div>
+                        <div style="font-size: 20px; font-weight: 700;">12 Trucks</div>
+                    </div>
+                    <span class="badge badge-success">85% Active</span>
+                </div>
+                <div class="truck-card">
+                    <div class="truck-icon"><svg class="icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle);">TOTAL ITEMS OUT</div>
+                        <div style="font-size: 20px; font-weight: 700;">450 Kits</div>
+                    </div>
+                </div>
+                <div class="truck-card">
+                    <div class="truck-icon"><svg class="icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle);">LAST SYNC</div>
+                        <div style="font-size: 20px; font-weight: 700;">Just Now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;" class="animate-fade-in">
+                <div class="card">
+                    <div class="card-title">Active Distribution Logs</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Barangay</th>
+                                    <th>Quantity</th>
+                                    <th>Status</th>
+                                    <th>ETA / Timestamp</th>
+                                    <th>Tracking</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distributionTableBody">
+                                <tr>
+                                    <td><div style="font-weight: 600;">San Jose</div><div style="font-size: 11px; color: var(--text-subtle);">Batch #RL-2024-008</div></td>
+                                    <td>142 Units</td>
+                                    <td><span class="badge badge-success">Delivered</span></td>
+                                    <td>Oct 12, 09:45 AM</td>
+                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Details</button></td>
+                                </tr>
+                                <tr>
+                                    <td><div style="font-weight: 600;">Santa Maria</div><div style="font-size: 11px; color: var(--text-subtle);">Batch #RL-2024-009</div></td>
+                                    <td>88 Units</td>
+                                    <td><span class="badge badge-warning">En Route</span></td>
+                                    <td>Oct 12, 11:20 AM</td>
+                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Track</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="hub-sync">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase;">Live Hub Sync</span>
+                            <span class="badge" style="background: rgba(255,255,255,0.2); color: #fff; font-size: 8px;">ENCRYPTED</span>
+                        </div>
+                        <div id="syncLogs">
+                            <div class="log-item"><span>Truck #08 departed Warehouse A</span><span>09:12 AM</span></div>
+                            <div class="log-item"><span>San Jose confirmed delivery</span><span>09:45 AM</span></div>
+                            <div class="log-item"><span>Santa Maria request prioritized</span><span>10:30 AM</span></div>
+                            <div class="log-item"><span>Truck #12 en route to Santa Maria</span><span>11:20 AM</span></div>
+                        </div>
+                        <div style="margin-top: 24px; text-align: center;">
+                            <div style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); border-top-color: #fff; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 20px; font-weight: 800;">94.8%</div>
+                                    <div style="font-size: 8px; opacity: 0.6;">EFFICIENCY</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-title">New Distribution Record</div>
+                        <form id="distributionForm">
+                            <div class="form-group">
+                                <label class="form-label">Barangay</label>
+                                <select id="distBarangay" class="form-control" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Resource Item</label>
+                                <select id="distItem" class="form-control" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" id="distQty" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Confirm Deployment</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const [barangays, items] = await Promise.all([
+                    fetch('../../php/api/reports.php?action=list_all').then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=inventory_summary').then(r => r.json())
+                ]);
+
+                if (barangays.success) {
+                    const select = document.getElementById('distBarangay');
+                    const uniqueBrgys = [...new Set(barangays.reports.map(r => r.barangay_name))];
+                    select.innerHTML = uniqueBrgys.map(b => `<option value="${b}">${b}</option>`).join('');
+                }
+
+                if (items.success) {
+                    const select = document.getElementById('distItem');
+                    select.innerHTML = items.summary.map(i => `<option value="${i.id}">${i.item_name} (${i.quantity_available} avail)</option>`).join('');
+                }
+            } catch (error) { console.error('Load error:', error); }
+        }
+
+        document.getElementById('distributionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.innerHTML = 'Processing...';
+
+            const formData = {
+                barangay_name: document.getElementById('distBarangay').value,
+                inventory_id: document.getElementById('distItem').value,
+                quantity: document.getElementById('distQty').value
+            };
+
+            try {
+                const response = await fetch('../../php/api/relief.php?action=record_distribution', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Distribution record created successfully.');
+                    location.reload();
+                }
+            } catch (error) { alert('System error.'); }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>

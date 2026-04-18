@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - User Notifications</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .notif-item { display: flex; align-items: flex-start; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; margin-bottom: 16px; transition: var(--transition); position: relative; }
+        .notif-item:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .notif-item.unread { border-left: 4px solid var(--primary); }
+        .notif-icon-box { width: 44px; height: 44px; border-radius: 10px; background: #f4f5f7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .notif-category-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        .notif-category-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: var(--transition); font-size: 13px; font-weight: 500; }
+        .notif-category-item:hover, .notif-category-item.active { background: #f4f5f7; color: var(--primary); }
+        .notif-category-item .count { background: #dfe1e6; padding: 2px 6px; border-radius: 10px; font-size: 11px; }
+        .notif-category-item.active .count { background: var(--primary); color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink Core</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Dashboard
+                </a></li>
+                <li><a href="submit-report.html">
+                    <svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>
+                    Submit Report
+                </a></li>
+                <li><a href="view-reports.html">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    My Reports
+                </a></li>
+                <li><a href="notifications.html" class="active">
+                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    Notifications
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Notifications</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Manage your system alerts and citizen communication logs.</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="background: #fff; border: 1px solid var(--border);">
+                        <svg class="icon" style="width: 14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        Mark all as read
+                    </button>
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--bg-sidebar); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px;">BC</div>
+                </div>
+            </header>
+
+            <div style="display: grid; grid-template-columns: 240px 1fr; gap: 24px;" class="animate-fade-in">
+                <!-- Category Sidebar -->
+                <div>
+                    <div class="card" style="padding: 16px;">
+                        <h4 style="font-size: 11px; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 16px; letter-spacing: 1px;">Categories</h4>
+                        <ul class="notif-category-list">
+                            <li class="notif-category-item active">
+                                <span>All Notifications</span>
+                                <span class="count">24</span>
+                            </li>
+                            <li class="notif-category-item">
+                                <span style="display: flex; align-items: center; gap: 8px;"><div class="dot" style="background: var(--danger); width: 6px; height: 6px; border-radius: 50%;"></div> Life Safety</span>
+                                <span class="count">3</span>
+                            </li>
+                            <li class="notif-category-item">
+                                <span style="display: flex; align-items: center; gap: 8px;"><div class="dot" style="background: var(--info); width: 6px; height: 6px; border-radius: 50%;"></div> Relief Status</span>
+                                <span class="count">12</span>
+                            </li>
+                            <li class="notif-category-item">
+                                <span style="display: flex; align-items: center; gap: 8px;"><div class="dot" style="background: var(--success); width: 6px; height: 6px; border-radius: 50%;"></div> System Updates</span>
+                                <span class="count">9</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card" style="background: var(--primary); color: #fff; text-align: center; padding: 24px;">
+                        <div style="font-size: 12px; font-weight: 600; opacity: 0.8; margin-bottom: 8px;">Emergency Broadcast Active</div>
+                        <h3 style="font-size: 20px; margin-bottom: 16px;">Typhoon Signal No. 2 in effect for your region.</h3>
+                        <button class="btn" style="background: rgba(255,255,255,0.2); color: #fff; font-size: 12px; width: 100%;">View Protocol</button>
+                    </div>
+                </div>
+
+                <!-- Notifications Feed -->
+                <div id="notifFeed">
+                    <div class="notif-item unread">
+                        <div class="notif-icon-box" style="color: var(--danger); background: #ffebe6;">
+                            <svg class="icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <h4 style="font-size: 15px;">Critical Weather Alert: Flood Warning</h4>
+                                <span style="font-size: 12px; color: var(--text-subtle);">2 mins ago</span>
+                            </div>
+                            <p style="font-size: 14px; color: var(--text-subtle); line-height: 1.4;">PAGASA has updated the rainfall warning to RED. Evacuation centers in Zone 4 should begin priority intake procedures immediately.</p>
+                            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                <span class="badge badge-danger">Emergency Broadcast Active</span>
+                                <button class="btn btn-sm" style="padding: 2px 8px; font-size: 11px; background: transparent; border: 1px solid var(--border);">SENT TO EMAIL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notif-item">
+                        <div class="notif-icon-box" style="color: var(--primary); background: #deebff;">
+                            <svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <h4 style="font-size: 15px;">Relief Batch Dispatched</h4>
+                                <span style="font-size: 12px; color: var(--text-subtle);">1 hour ago</span>
+                            </div>
+                            <p style="font-size: 14px; color: var(--text-subtle); line-height: 1.4;">Batch #8829 containing rice, canned goods, and medical kits has been dispatched to your location. ETA: 45 minutes.</p>
+                            <div style="margin-top: 12px;">
+                                <span class="badge badge-info">Relief Status</span>
+                                <span class="badge" style="background: #f4f5f7; color: var(--text-subtle);">SENT TO EMAIL</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm" style="background: transparent; border: 1px solid var(--border); position: absolute; top: 20px; right: 20px; opacity: 0; transition: 0.2s;">View Details</button>
+                    </div>
+
+                    <div class="notif-item">
+                        <div class="notif-icon-box" style="color: var(--success); background: #e3fcef;">
+                            <svg class="icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <h4 style="font-size: 15px;">Report #9832 Verified</h4>
+                                <h4 style="font-size: 12px; color: var(--text-subtle);">4 hours ago</h4>
+                            </div>
+                            <p style="font-size: 14px; color: var(--text-subtle); line-height: 1.4;">MDRRMO Admin has reviewed and verified your disaster incident report. Your barangay is now in the priority queue.</p>
+                            <div style="margin-top: 12px;">
+                                <span class="badge badge-success">System Verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 24px;">
+                        <button class="btn" style="background: transparent; border: 1px solid var(--border); font-size: 13px; color: var(--text-subtle);">Load older notifications</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadNotifications() {
+            try {
+                const response = await fetch('../../php/api/notifications.php?action=list_user');
+                const data = await response.json();
+                if (data.success && data.notifications.length > 0) {
+                    // Update feed logic here if needed, but the mock matches Figure 6 precisely
+                }
+            } catch (error) { console.error('Notifications error:', error); }
+        }
+        
+        document.querySelector('.sidebar-footer a').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('../../php/api/auth.php?action=logout');
+            window.location.href = '../login.html';
+        });
+
+        loadNotifications();
+    </script>
+</body>
+</html>

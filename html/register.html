@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Official Registration</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .registration-header { text-align: center; margin-bottom: 32px; }
+        .registration-header .brand { color: var(--primary); font-weight: 800; font-size: 18px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+        .registration-header .sub-brand { font-size: 10px; font-weight: 600; color: var(--text-subtle); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 24px; }
+        .registration-header h2 { font-size: 20px; font-weight: 700; color: #172b4d; }
+        .registration-header p { font-size: 13px; color: var(--text-subtle); margin-top: 8px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .full-width { grid-column: span 2; }
+    </style>
+</head>
+<body class="auth-page">
+    <div class="auth-container animate-fade-in" style="max-width: 500px;">
+        <div class="auth-card">
+            <div class="registration-header">
+                <div class="brand">ReliefLink Core</div>
+                <div class="sub-brand">Disaster Command & Relief Portal</div>
+                <h2>Official Registration</h2>
+                <p>Create your administrative account to access the command center.</p>
+            </div>
+
+            <form id="registerForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" id="fullName" class="form-control" required placeholder="Juan Dela Cruz">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" id="email" class="form-control" required placeholder="juan@province.gov">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Barangay Selection</label>
+                        <select id="barangay" class="form-control" required>
+                            <option value="" disabled selected>Select Barangay</option>
+                            <option value="San Jose">San Jose</option>
+                            <option value="Santa Maria">Santa Maria</option>
+                            <option value="Poblacion">Poblacion</option>
+                            <option value="San Roque">San Roque</option>
+                            <option value="MDRRMO">MDRRMO (Admin Only)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label">Username</label>
+                        <input type="text" id="username" class="form-control" required placeholder="j.delacruz_admin">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" id="password" class="form-control" required placeholder="••••••••">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" id="confirmPassword" class="form-control" required placeholder="••••••••">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 16px;">
+                    Register Account <span style="margin-left: 8px;">→</span>
+                </button>
+
+                <div id="registerError" class="form-error" style="text-align: center; margin-top: 16px;"></div>
+            </form>
+
+            <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <p style="font-size: 13px; color: var(--text-subtle);">
+                    Already registered? <a href="login.html" style="font-weight: 600;">Back to Login</a>
+                </p>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 32px; opacity: 0.6;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 12px; height: 12px; background: #0052cc; border-radius: 2px;"></div>
+                    <span style="font-size: 8px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Build Accredited</span>
+                </div>
+                <span style="font-size: 8px; color: var(--text-subtle);">© 2024 RELIEFLINK SYSTEM</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerHTML;
+
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                document.getElementById('registerError').textContent = 'Passwords do not match';
+                return;
+            }
+
+            btn.innerHTML = 'Creating Account...';
+            btn.disabled = true;
+
+            const formData = {
+                full_name: document.getElementById('fullName').value,
+                barangay_name: document.getElementById('barangay').value,
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password
+            };
+
+            try {
+                const response = await fetch('../php/api/auth.php?action=register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Registration successful! Access granted.');
+                    window.location.href = 'login.html';
+                } else {
+                    document.getElementById('registerError').textContent = data.message || 'Registration failed';
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                document.getElementById('registerError').textContent = 'System error occurred.';
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

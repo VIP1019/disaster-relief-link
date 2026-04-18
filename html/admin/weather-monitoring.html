@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Weather API Monitoring</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .weather-gauge { text-align: center; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+        .gauge-value { font-size: 32px; font-weight: 800; color: var(--primary); margin: 8px 0; }
+        .gauge-label { font-size: 11px; font-weight: 700; color: var(--text-subtle); text-transform: uppercase; }
+        .radar-box { background: #000; height: 300px; border-radius: 12px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .radar-scan { position: absolute; width: 100%; height: 100%; background: conic-gradient(from 0deg, rgba(0,255,0,0.2) 0deg, transparent 90deg); animation: scan 4s linear infinite; }
+        @keyframes scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .radar-grid { position: absolute; width: 100%; height: 100%; background-image: radial-gradient(circle, rgba(0,255,0,0.1) 1px, transparent 1px); background-size: 40px 40px; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Command Center
+                </a></li>
+                <li><a href="weather-monitoring.html" class="active">
+                    <svg class="icon"><path d="M17.5 19c.7 0 1.2-.6 1.2-1.2 0-.3-.1-.6-.3-.8l-1-1.1-1 1.1c-.2.2-.3.5-.3.8 0 .7.5 1.2 1.2 1.2z"></path><path d="M18 10c0-4.4-3.6-8-8-8s-8 3.6-8 8c0 2.2 1.8 4 4 4h1a4 4 0 0 1 4 4v1h1a4 4 0 0 0 4-4v-1h1a4 4 0 0 0 4-4z"></path></svg>
+                    Weather Monitoring
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Weather API Monitoring</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">System Node: Alpha-1 | Real-time environmental sync</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" id="syncBtn">Force API Sync</button>
+                </div>
+            </header>
+
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px;" class="animate-fade-in">
+                <div class="weather-gauge">
+                    <div class="gauge-label">Precipitation</div>
+                    <div class="gauge-value" id="precipValue">24%</div>
+                    <div style="font-size: 10px; color: var(--success);">STABLE</div>
+                </div>
+                <div class="weather-gauge">
+                    <div class="gauge-label">Atmospheric Pressure</div>
+                    <div class="gauge-value" id="pressureValue">1012 hPa</div>
+                    <div style="font-size: 10px; color: var(--text-subtle);">NORMAL</div>
+                </div>
+                <div class="weather-gauge">
+                    <div class="gauge-label">High Risk - Flood</div>
+                    <div class="gauge-value" style="color: var(--danger);" id="floodRisk">24°C</div>
+                    <div style="font-size: 10px; color: var(--danger);">WARNING ACTIVE</div>
+                </div>
+                <div class="weather-gauge">
+                    <div class="gauge-label">Visibility</div>
+                    <div class="gauge-value" id="visibilityValue">12.5 km</div>
+                    <div style="font-size: 10px; color: var(--text-subtle);">LAST SYNC: 2M AGO</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;" class="animate-fade-in">
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div class="radar-box">
+                        <div class="radar-grid"></div>
+                        <div class="radar-scan"></div>
+                        <div style="z-index: 10; text-align: center; color: #00ff00; font-family: monospace;">
+                            <div style="font-size: 14px; font-weight: 700; letter-spacing: 2px;">LIVE RADAR FEED</div>
+                            <div style="font-size: 10px; opacity: 0.8;">SCANNING SECTOR ALPHA-1...</div>
+                            <img src="https://www.google.com/maps/vt/pb=!1m4!1m3!1i10!2i864!3i422!2m3!1e0!2sm!3i123456789!3m8!2sen!3sph!4e1105!6m6!1e12!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af" style="width: 100%; height: 200px; object-fit: cover; opacity: 0.3; margin-top: 10px;">
+                        </div>
+                        <div style="position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-family: monospace; font-size: 8px; text-align: right;">
+                            LAT: 14.5995 | LONG: 120.9842<br>ALT: 12.4m
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Barangay Weather Status</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Temp</th>
+                                    <th>Condition</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weatherTableBody">
+                                <!-- Populated by JS -->
+                                <tr><td colspan="3" style="text-align: center; color: var(--text-subtle);">Fetching node data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-block" style="margin-top: 16px; border: 1px solid var(--border);">EXPORT CSV</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function fetchWeather() {
+            try {
+                const response = await fetch('../../php/api/weather.php?action=get_weather');
+                const data = await response.json();
+                if (data.success) {
+                    const tbody = document.getElementById('weatherTableBody');
+                    tbody.innerHTML = data.weather_data.map(w => `
+                        <tr>
+                            <td><div style="font-weight: 600;">${w.barangay_name}</div></td>
+                            <td>${w.temperature}°C</td>
+                            <td><span class="badge badge-info">${w.condition}</span></td>
+                        </tr>
+                    `).join('');
+                    
+                    // Update gauges with first result as sample
+                    if (data.weather_data.length > 0) {
+                        const sample = data.weather_data[0];
+                        document.getElementById('precipValue').textContent = sample.humidity + '%';
+                        document.getElementById('floodRisk').textContent = sample.temperature + '°C';
+                    }
+                }
+            } catch (error) { console.error('Weather error:', error); }
+        }
+
+        document.getElementById('syncBtn').addEventListener('click', () => {
+            const btn = document.getElementById('syncBtn');
+            btn.textContent = 'Syncing...';
+            btn.disabled = true;
+            setTimeout(() => {
+                fetchWeather();
+                btn.textContent = 'Force API Sync';
+                btn.disabled = false;
+            }, 1500);
+        });
+
+        fetchWeather();
+        setInterval(fetchWeather, 300000); // 5 min
+    </script>
+</body>
+</html>

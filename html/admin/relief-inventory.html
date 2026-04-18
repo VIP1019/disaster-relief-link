@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Inventory Management</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .inventory-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .sku-tag { font-family: monospace; font-size: 10px; color: var(--text-subtle); text-transform: uppercase; background: #f4f5f7; padding: 2px 4px; border-radius: 2px; }
+        .stock-progress { height: 6px; background: #dfe1e6; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+        .alert-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 8px; background: #fff; border: 1px solid var(--border); margin-bottom: 12px; }
+        .alert-item.critical { border-left: 4px solid var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Command Center
+                </a></li>
+                <li><a href="review-reports.html">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                    Disaster Reports
+                </a></li>
+                <li><a href="prioritize-barangays.html">
+                    <svg class="icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Priority Ranking
+                </a></li>
+                <li><a href="relief-inventory.html" class="active">
+                    <svg class="icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    Resource Inventory
+                </a></li>
+                <li><a href="distribution.html">
+                    <svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg>
+                    Distribution Management
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Inventory Management</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Centralized stock tracking for MDRRMO Sector Alpha-1</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Search Resources...</button>
+                    <button class="btn btn-primary">Deploy Resources</button>
+                </div>
+            </header>
+
+            <div class="metrics-grid animate-fade-in">
+                <div class="metric-card" style="border-left-color: var(--primary);">
+                    <div class="metric-label">Total Supply Units</div>
+                    <div class="metric-value" id="totalUnits">12,842</div>
+                    <div style="font-size: 11px; color: var(--text-subtle);">Across 8 stock categories</div>
+                </div>
+                <div class="metric-card" style="border-left-color: var(--warning);">
+                    <div class="metric-label">Low Stock Alerts</div>
+                    <div class="metric-value" id="lowStockCount">08</div>
+                    <div style="font-size: 11px; color: var(--warning); font-weight: 600;">Action required in 24h</div>
+                </div>
+                <div class="metric-card" style="border-left-color: var(--success);">
+                    <div class="metric-label">Items Distributed</div>
+                    <div class="metric-value" id="distributedCount">14m ago</div>
+                    <div style="font-size: 11px; color: var(--success); font-weight: 600;">Last sync: Just now</div>
+                </div>
+            </div>
+
+            <div class="inventory-grid animate-fade-in">
+                <!-- Stock List -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Global Stock Inventory</span>
+                        <div style="display: flex; gap: 8px;">
+                            <span class="badge badge-info">Food</span>
+                            <span class="badge badge-warning">Medical</span>
+                            <span class="badge badge-success">Water</span>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item Details</th>
+                                    <th>Category</th>
+                                    <th>Stock Level</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody">
+                                <!-- Populated by JS -->
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600;">Rice Grains 50kg</div>
+                                        <div class="sku-tag">SKU: FOOD-RC-50</div>
+                                    </td>
+                                    <td><span class="badge" style="background: #e3fcef; color: #006644;">FOOD</span></td>
+                                    <td>
+                                        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
+                                            <span>420 Sacks</span>
+                                            <span style="color: var(--text-subtle);">84%</span>
+                                        </div>
+                                        <div class="stock-progress"><div style="width: 84%; height: 100%; background: var(--success);"></div></div>
+                                    </td>
+                                    <td><span class="badge badge-success">Stable</span></td>
+                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Update</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Critical Alerts Panel -->
+                <div>
+                    <div class="card" style="background: #f4f5f7;">
+                        <div class="card-title">
+                            <span>Critical Alerts</span>
+                            <svg class="icon" style="color: var(--danger);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                        </div>
+                        <div id="alertsContainer">
+                            <div class="alert-item critical">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 13px; font-weight: 700;">Sterile Bandages</div>
+                                    <div style="font-size: 11px; color: var(--text-subtle);">Warehouse B, Shelf 4</div>
+                                    <div style="font-size: 11px; color: var(--danger); font-weight: 700; margin-top: 4px;">5% LEFT</div>
+                                </div>
+                                <button class="btn btn-sm btn-primary" style="font-size: 10px;">Request</button>
+                            </div>
+                            <div class="alert-item">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 13px; font-weight: 700;">Infant Formula</div>
+                                    <div style="font-size: 11px; color: var(--text-subtle);">Warehouse A, Cold Storage</div>
+                                    <div style="font-size: 11px; color: var(--warning); font-weight: 700; margin-top: 4px;">2% LEFT</div>
+                                </div>
+                                <button class="btn btn-sm btn-primary" style="font-size: 10px;">Request</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-block" style="margin-top: 12px; font-size: 12px; border: 1px solid var(--border);">View All Alerts</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Quick Add Item</div>
+                        <form id="addItemForm">
+                            <div class="form-group">
+                                <label class="form-label">Item Name</label>
+                                <input type="text" id="itemName" class="form-control" placeholder="e.g. Bottled Water 1L">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" id="itemQty" class="form-control" placeholder="0">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Add to Registry</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadInventory() {
+            try {
+                const response = await fetch('../../php/api/relief.php?action=inventory_summary');
+                const data = await response.json();
+                if (data.success) {
+                    const tbody = document.getElementById('inventoryTableBody');
+                    tbody.innerHTML = data.summary.map(item => {
+                        const stockPercent = Math.min((parseInt(item.quantity_available) / 1000) * 100, 100);
+                        const status = stockPercent > 50 ? 'Stable' : (stockPercent > 20 ? 'Moderate' : 'Critical');
+                        const badgeClass = status === 'Stable' ? 'success' : (status === 'Moderate' ? 'warning' : 'danger');
+                        
+                        return `
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">${item.item_name}</div>
+                                    <div class="sku-tag">SKU: ${item.item_name.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*1000)}</div>
+                                </td>
+                                <td><span class="badge badge-info">GENERAL</span></td>
+                                <td>
+                                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
+                                        <span>${item.quantity_available} Units</span>
+                                        <span style="color: var(--text-subtle);">${Math.round(stockPercent)}%</span>
+                                    </div>
+                                    <div class="stock-progress"><div style="width: ${stockPercent}%; height: 100%; background: var(--${badgeClass});"></div></div>
+                                </td>
+                                <td><span class="badge badge-${badgeClass}">${status}</span></td>
+                                <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Update</button></td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (error) { console.error('Inventory error:', error); }
+        }
+
+        document.getElementById('addItemForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const itemName = document.getElementById('itemName').value;
+            const quantity = document.getElementById('itemQty').value;
+            
+            try {
+                const response = await fetch('../../php/api/relief.php?action=add_item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ item_name: itemName, quantity: quantity })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Item added to global registry.');
+                    loadInventory();
+                    e.target.reset();
+                }
+            } catch (error) { alert('Error updating inventory.'); }
+        });
+
+        loadInventory();
+    </script>
+</body>
+</html>

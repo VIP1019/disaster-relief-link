@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Official Dashboard</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .status-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; }
+        .batch-id { font-family: monospace; color: var(--text-subtle); font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink Core</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html" class="active">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Dashboard
+                </a></li>
+                <li><a href="submit-report.html">
+                    <svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>
+                    Submit Report
+                </a></li>
+                <li><a href="view-reports.html">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    My Reports
+                </a></li>
+                <li><a href="notifications.html">
+                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    Notifications
+                </a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <a href="#" id="logoutBtn" style="color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 10px; font-size: 14px;">
+                    <svg class="icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Sign Out
+                </a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Official Dashboard</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Monitoring Barangay San Jose Relief Operations</p>
+                </div>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <button class="btn btn-primary" onclick="location.href='submit-report.html'">
+                        Initiate Emergency Alert
+                    </button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe1e6; display: flex; align-items: center; justify-content: center; font-weight: 600;" id="userInitials">BC</div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 13px; font-weight: 600;" id="userName">Brgy. Captain</div>
+                            <div style="font-size: 11px; color: var(--text-subtle);" id="userBarangay">San Jose</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="metrics-grid animate-fade-in">
+                <div class="metric-card" style="border-left-color: var(--primary);">
+                    <div class="metric-label">Total Submitted Reports</div>
+                    <div class="metric-value" id="totalReports">0</div>
+                    <div style="font-size: 11px; color: var(--text-subtle);">Monthly Input: Active</div>
+                </div>
+                <div class="metric-card" style="border-left-color: var(--success);">
+                    <div class="metric-label">Current Report Status</div>
+                    <div class="metric-value" style="font-size: 20px; margin: 16px 0;" id="currentStatus">Active</div>
+                    <div style="font-size: 11px; color: var(--success); font-weight: 600;">System Verified</div>
+                </div>
+                <div class="metric-card" style="border-left-color: var(--warning);">
+                    <div class="metric-label">Latest Notifications</div>
+                    <div class="metric-value" id="notificationCount">2</div>
+                    <div style="font-size: 11px; color: var(--warning); font-weight: 600;">Action Required</div>
+                </div>
+                <div class="metric-card" style="border-left-color: var(--info);">
+                    <div class="metric-label">Relief Confirmed</div>
+                    <div class="metric-value" id="reliefConfirmed">0</div>
+                    <div style="font-size: 11px; color: var(--text-subtle);">85% coverage</div>
+                </div>
+            </div>
+
+            <div class="animate-fade-in">
+                <div class="card">
+                    <div class="card-title">Relief Confirmation Updates</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Batch ID</th>
+                                    <th>Status</th>
+                                    <th>Families</th>
+                                    <th>Timestamp</th>
+                                    <th>View All</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reliefConfirmationBody">
+                                <!-- Example Row from Figure 3 -->
+                                <tr>
+                                    <td><span class="batch-id">RL-2024-008</span></td>
+                                    <td><span class="badge badge-success">Delivered</span></td>
+                                    <td>142</td>
+                                    <td>Oct 12, 09:45 AM</td>
+                                    <td><button class="btn" style="padding: 4px 8px; font-size: 11px; border: 1px solid var(--border);">View Details</button></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="batch-id">RL-2024-009</span></td>
+                                    <td><span class="badge badge-warning">In Transit</span></td>
+                                    <td>88</td>
+                                    <td>Oct 12, 11:20 AM</td>
+                                    <td><button class="btn" style="padding: 4px 8px; font-size: 11px; border: 1px solid var(--border);">View Details</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;" class="animate-fade-in">
+                <div class="card">
+                    <div class="card-title">Local Resource Deployment</div>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 14px; font-weight: 500;">San Jose Community Center</span>
+                            <span class="badge badge-success">85% Capacity</span>
+                        </div>
+                        <div style="height: 8px; background: #dfe1e6; border-radius: 4px; overflow: hidden;">
+                            <div style="width: 85%; height: 100%; background: var(--primary);"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 14px; font-weight: 500;">Volunteer Deployment</span>
+                            <span class="badge badge-info">12 Teams Active</span>
+                        </div>
+                    </div>
+                </div >
+                <div class="card">
+                    <div class="card-title">Latest Notifications</div>
+                    <div id="latestNotifications" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="padding: 10px; border-radius: 6px; background: #f4f5f7; border-left: 3px solid var(--warning);">
+                            <div style="font-size: 13px; font-weight: 600;">Relief Batch RL-2024-012 in transit</div>
+                            <div style="font-size: 11px; color: var(--text-subtle);">Expected arrival in 2 hours.</div>
+                        </div>
+                        <div style="padding: 10px; border-radius: 6px; background: #f4f5f7; border-left: 3px solid var(--success);">
+                            <div style="font-size: 13px; font-weight: 600;">Report #9832 Verified</div>
+                            <div style="font-size: 11px; color: var(--text-subtle);">Admin has reviewed your disaster report.</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-block" style="margin-top: 16px; border: 1px solid var(--border); font-size: 12px;">Clear Notifications</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function checkAuth() {
+            try {
+                const response = await fetch('../../php/api/auth.php?action=check');
+                const data = await response.json();
+                if (!data.success) window.location.href = '../login.html';
+                else {
+                    document.getElementById('userName').textContent = data.user.full_name;
+                    document.getElementById('userBarangay').textContent = data.user.barangay_name;
+                    document.getElementById('userInitials').textContent = data.user.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+                    loadUserData();
+                }
+            } catch (error) { window.location.href = '../login.html'; }
+        }
+
+        async function loadUserData() {
+            try {
+                const [reports, notifications] = await Promise.all([
+                    fetch('../../php/api/reports.php?action=list_user').then(r => r.json()),
+                    fetch('../../php/api/notifications.php?action=list_user').then(r => r.json())
+                ]);
+
+                if (reports.success) {
+                    document.getElementById('totalReports').textContent = reports.reports.length;
+                    const latest = reports.reports[0];
+                    if (latest) {
+                        document.getElementById('currentStatus').textContent = latest.status.replace('_', ' ').toUpperCase();
+                    }
+                }
+                
+                if (notifications.success) {
+                    document.getElementById('notificationCount').textContent = notifications.notifications.length;
+                }
+            } catch (error) { console.error('Dashboard error:', error); }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('../../php/api/auth.php?action=logout');
+            window.location.href = '../login.html';
+        });
+
+        checkAuth();
+    </script>
+</body>
+</html>

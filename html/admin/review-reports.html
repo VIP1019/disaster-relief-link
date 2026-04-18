@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Disaster Reports Review</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .report-id { font-family: monospace; font-size: 11px; font-weight: 700; color: var(--primary); background: #deebff; padding: 2px 6px; border-radius: 4px; }
+        .assessment-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; margin-top: 4px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Command Center
+                </a></li>
+                <li><a href="review-reports.html" class="active">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    Disaster Reports
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Disaster Reports</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Review and validate incoming situation reports from barangay officials.</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Pending Only</button>
+                    <button class="btn btn-primary">Export Report Ledger</button>
+                </div>
+            </header>
+
+            <div class="card animate-fade-in">
+                <div class="card-title">
+                    <span>Active Incident Reports</span>
+                    <div style="display: flex; gap: 12px; font-size: 11px;">
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--primary);"></div> Pending</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--success);"></div> Approved</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--danger);"></div> Critical</span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Report ID</th>
+                                <th>Barangay</th>
+                                <th>Disaster Type</th>
+                                <th>Status</th>
+                                <th>Active Review</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTableBody">
+                            <!-- Populated by JS -->
+                            <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-subtle);">Synchronizing with field units...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Detail Modal (Hidden by default) -->
+            <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+                <div class="card" style="max-width: 600px; width: 90%; margin: 0;">
+                    <div class="card-title">
+                        <span>Report Assessment</span>
+                        <button onclick="closeModal()" style="border:none; background:none; cursor:pointer;">&times;</button>
+                    </div>
+                    <div id="modalContent"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadReports() {
+            try {
+                const response = await fetch('../../php/api/reports.php?action=list_all');
+                const data = await response.json();
+                if (data.success) {
+                    const tbody = document.getElementById('reportsTableBody');
+                    tbody.innerHTML = data.reports.map(r => `
+                        <tr>
+                            <td><span class="report-id">REP-2024-${r.id.toString().padStart(4, '0')}</span></td>
+                            <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Sector Node: 4-A</div></td>
+                            <td><span class="badge badge-info">${r.disaster_type.toUpperCase()}</span></td>
+                            <td><span class="badge badge-${r.status === 'pending' ? 'warning' : 'success'}">${r.status.replace('_', ' ').toUpperCase()}</span></td>
+                            <td>
+                                <div class="assessment-badge">
+                                    <div class="dot" style="background: ${r.severity_level === 'critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
+                                    <span>${r.severity_level.toUpperCase()} ASSESSMENT</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="approveReport(${r.id})">Verify</button>
+                                <button class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;">Reject</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) { console.error('Reports error:', error); }
+        }
+
+        async function approveReport(id) {
+            if (!confirm('Verify and approve this disaster report?')) return;
+            try {
+                const response = await fetch('../../php/api/reports.php?action=update_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, status: 'approved' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Report verified and added to priority engine.');
+                    loadReports();
+                }
+            } catch (error) { alert('Verification failed.'); }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>

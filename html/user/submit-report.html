@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Disaster Incident Report</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .type-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .type-option { border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: var(--transition); background: #fff; }
+        .type-option:hover { border-color: var(--primary); background: #f0f7ff; }
+        .type-option.active { border-color: var(--primary); background: #e0efff; box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.1); }
+        .type-option svg { width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-subtle); }
+        .type-option.active svg { color: var(--primary); }
+        .type-option span { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        
+        .impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .severity-track { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; position: relative; }
+        .severity-track::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: #dfe1e6; z-index: 1; transform: translateY(-50%); }
+        .severity-point { width: 12px; height: 12px; border-radius: 50%; background: #dfe1e6; z-index: 2; cursor: pointer; position: relative; }
+        .severity-point.active { background: var(--primary); box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.2); }
+        .severity-label { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--text-subtle); text-transform: uppercase; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink Core</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Dashboard
+                </a></li>
+                <li><a href="submit-report.html" class="active">
+                    <svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>
+                    Submit Report
+                </a></li>
+                <li><a href="view-reports.html">
+                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    My Reports
+                </a></li>
+                <li><a href="notifications.html">
+                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    Notifications
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Disaster Incident Report</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Formal incident documentation for Barangay Officials.</p>
+                </div>
+                <button class="btn" style="border: 1px solid var(--border); background: #fff;">Deploy Status</button>
+            </header>
+
+            <form id="incidentForm" class="animate-fade-in">
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;">
+                    <div>
+                        <!-- Classification & Sector -->
+                        <div class="card">
+                            <div class="card-title">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" style="color: var(--primary);"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                                    Classification & Sector
+                                </span>
+                            </div>
+                            <label class="form-label">Type of Disaster</label>
+                            <div class="type-selector" id="disasterTypeSelector">
+                                <div class="type-option" data-value="Flood">
+                                    <svg><path d="M2 12s3-3 5-3 5 3 5 3 3-3 5-3 5 3 5 3"></path><path d="M2 17s3-3 5-3 5 3 5 3 3-3 5-3 5 3 5 3"></path></svg>
+                                    <span>Flood</span>
+                                </div>
+                                <div class="type-option" data-value="Fire">
+                                    <svg><path d="M12 2c0 2.2-1.8 4-4 4s-4-1.8-4-4"></path><path d="M12 2c0 5.5 4.5 10 10 10s-10-4.5-10-10z"></path></svg>
+                                    <span>Fire</span>
+                                </div>
+                                <div class="type-option" data-value="Seismic">
+                                    <svg><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                    <span>Seismic</span>
+                                </div>
+                                <div class="type-option" data-value="Storm">
+                                    <svg><path d="M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z"></path><path d="M12 2v20"></path><path d="M2 12h20"></path></svg>
+                                    <span>Storm</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="disasterType" name="disasterType" required>
+
+                            <label class="form-label">Geographic Sector Mapping</label>
+                            <div style="height: 180px; background: #172b4d; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; margin-top: 8px;">
+                                <div style="text-align: center;">
+                                    <div style="font-weight: 700;">Sector 7-B: Alpha Zone</div>
+                                    <div style="opacity: 0.6;">Tap to calibrate coordinates</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Situational Assessment -->
+                        <div class="card">
+                            <div class="card-title">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" style="color: var(--primary);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    Situational Assessment
+                                </span>
+                            </div>
+                            <textarea id="description" class="form-control" rows="6" placeholder="Provide brief observations, immediate needs, or prioritized concerns..."></textarea>
+                        </div>
+                    </div>
+
+                    <div>
+                        <!-- Impact Analysis -->
+                        <div class="card">
+                            <div class="card-title">Impact Analysis</div>
+                            <div class="impact-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Affected Families</label>
+                                    <input type="number" id="affectedFamilies" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Damaged Houses</label>
+                                    <input type="number" id="damagedHouses" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 24px;">
+                                <label class="form-label">Incident Severity</label>
+                                <div style="text-align: right; font-weight: 700; color: var(--primary); font-size: 14px;" id="severityLevelDisplay">Level 1</div>
+                                <div class="severity-track" id="severitySelector">
+                                    <div class="severity-point active" data-level="1"><span class="severity-label">Stable</span></div>
+                                    <div class="severity-point" data-level="2"><span class="severity-label">Moderate</span></div>
+                                    <div class="severity-point" data-level="3"><span class="severity-label">High</span></div>
+                                    <div class="severity-point" data-level="4"><span class="severity-label">Critical</span></div>
+                                </div>
+                                <input type="hidden" id="severityLevel" value="low">
+                            </div>
+                        </div>
+
+                        <div class="card" style="background: #f4f5f7; border: 1px dashed var(--border);">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                <svg class="icon" style="color: var(--danger);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                <div style="font-size: 13px; font-weight: 700;">Immediate Assistance Required</div>
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600;">
+                                    <input type="checkbox"> Medical Support
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600;">
+                                    <input type="checkbox"> Clothing/Relief
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" style="height: 48px; font-weight: 700;">
+                            Submit Incident Report <span style="margin-left: 8px;">→</span>
+                        </button>
+                        <button type="button" class="btn btn-block" style="margin-top: 12px; background: transparent; color: var(--text-subtle); border: 1px solid var(--border);">SAVE AS DRAFT</button>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Disaster Type Selection
+        const typeOptions = document.querySelectorAll('.type-option');
+        typeOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                typeOptions.forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                document.getElementById('disasterType').value = opt.dataset.value;
+            });
+        });
+
+        // Severity Selection
+        const severityPoints = document.querySelectorAll('.severity-point');
+        const severityMap = { 1: 'low', 2: 'medium', 3: 'high', 4: 'critical' };
+        severityPoints.forEach(pt => {
+            pt.addEventListener('click', () => {
+                severityPoints.forEach(p => p.classList.remove('active'));
+                pt.classList.add('active');
+                const level = pt.dataset.level;
+                document.getElementById('severityLevelDisplay').textContent = `Level ${level}`;
+                document.getElementById('severityLevel').value = severityMap[level];
+            });
+        });
+
+        document.getElementById('incidentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const type = document.getElementById('disasterType').value;
+            if (!type) { alert('Please select a disaster type'); return; }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.innerHTML = 'Transmitting...';
+            btn.disabled = true;
+
+            const formData = {
+                disaster_type: type,
+                description: document.getElementById('description').value,
+                affected_families: document.getElementById('affectedFamilies').value,
+                damaged_houses: document.getElementById('damagedHouses').value,
+                severity_level: document.getElementById('severityLevel').value
+            };
+
+            try {
+                const response = await fetch('../../php/api/reports.php?action=submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Incident report submitted and verified.');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('Submission failed: ' + data.message);
+                    btn.innerHTML = 'Submit Incident Report →';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('System error occurred.');
+                btn.innerHTML = 'Submit Incident Report →';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

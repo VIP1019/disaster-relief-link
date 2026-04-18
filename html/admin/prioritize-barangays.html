@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Resource Prioritization</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .priority-rank-card { border: 1px solid var(--border); border-radius: 12px; padding: 24px; background: #fff; position: relative; overflow: hidden; }
+        .rank-number { position: absolute; top: -10px; right: -5px; font-size: 80px; font-weight: 900; color: rgba(0,0,0,0.03); z-index: 1; }
+        .priority-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+        .severity-indicator { height: 8px; border-radius: 4px; background: #dfe1e6; margin: 12px 0; overflow: hidden; }
+        .severity-fill { height: 100%; background: var(--primary); transition: width 1s ease-in-out; }
+        .severity-fill.critical { background: var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-box">R</div>
+                <div class="sidebar-brand">ReliefLink</div>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">
+                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Command Center
+                </a></li>
+                <li><a href="prioritize-barangays.html" class="active">
+                    <svg class="icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Priority Ranking
+                </a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Resource Prioritization</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Sector Alpha-1 | Automated weighted ranking engine</p>
+                </div>
+                <button class="btn btn-primary" id="recalcBtn">Recalculate Priorities</button>
+            </header>
+
+            <div class="priority-grid animate-fade-in" id="topPriorityGrid">
+                <!-- Top 3 Ranking Cards -->
+                <div class="priority-rank-card">
+                    <div class="rank-number">01</div>
+                    <div style="position: relative; z-index: 2;">
+                        <span class="badge badge-danger" style="margin-bottom: 8px;">Critical Priority</span>
+                        <h3 style="font-size: 24px;">Poblacion</h3>
+                        <p style="font-size: 12px; color: var(--text-subtle);">92% Severity Score</p>
+                        <div class="severity-indicator"><div class="severity-fill critical" style="width: 92%;"></div></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700;">
+                            <span>AFFECTED: 1,240</span>
+                            <span>EVAC: 92%</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- More cards populated by JS -->
+            </div>
+
+            <div class="card animate-fade-in">
+                <div class="card-title">
+                    <span>Barangay Priority Registry</span>
+                    <span class="badge badge-info">Weighted Score Analysis</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Barangay Name</th>
+                                <th>Severity Index</th>
+                                <th>Weather Impact</th>
+                                <th>Relief Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priorityTableBody">
+                            <!-- Populated by JS -->
+                            <tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-subtle);">Analyzing incident reports...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadRankings() {
+            try {
+                const response = await fetch('../../php/api/priority.php?action=get_rankings');
+                const data = await response.json();
+                if (data.success) {
+                    const grid = document.getElementById('topPriorityGrid');
+                    grid.innerHTML = data.rankings.slice(0, 3).map((r, i) => `
+                        <div class="priority-rank-card">
+                            <div class="rank-number">0${i+1}</div>
+                            <div style="position: relative; z-index: 2;">
+                                <span class="badge badge-${r.overall_severity === 'Critical' ? 'danger' : 'primary'}" style="margin-bottom: 8px;">${r.overall_severity} Priority</span>
+                                <h3 style="font-size: 24px;">${r.barangay_name}</h3>
+                                <p style="font-size: 12px; color: var(--text-subtle);">${r.priority_score}% Severity Score</p>
+                                <div class="severity-indicator"><div class="severity-fill ${r.overall_severity === 'Critical' ? 'critical' : ''}" style="width: ${r.priority_score}%;"></div></div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700;">
+                                    <span>FAMILIES: ${r.total_families}</span>
+                                    <span>SCORE: ${r.priority_score}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    const tbody = document.getElementById('priorityTableBody');
+                    tbody.innerHTML = data.rankings.map(r => `
+                        <tr>
+                            <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Rank #${r.rank}</div></td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="flex: 1; height: 4px; background: #dfe1e6; border-radius: 2px; overflow: hidden;">
+                                        <div style="width: ${r.priority_score}%; height: 100%; background: ${r.overall_severity === 'Critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
+                                    </div>
+                                    <span style="font-size: 12px; font-weight: 600;">${r.priority_score}</span>
+                                </div>
+                            </td>
+                            <td><span class="badge badge-info">${r.weather_condition || 'Cloudy'}</span></td>
+                            <td><span class="badge badge-${r.overall_severity === 'Critical' ? 'danger' : 'success'}">${r.overall_severity}</span></td>
+                            <td><button class="btn btn-sm" style="border: 1px solid var(--border);" onclick="location.href='distribution.html'">Deploy Aid</button></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) { console.error('Rankings error:', error); }
+        }
+
+        document.getElementById('recalcBtn').addEventListener('click', () => {
+            const btn = document.getElementById('recalcBtn');
+            btn.textContent = 'Calculating...';
+            btn.disabled = true;
+            setTimeout(() => {
+                loadRankings();
+                btn.textContent = 'Recalculate Priorities';
+                btn.disabled = false;
+            }, 1000);
+        });
+
+        loadRankings();
+    </script>
+</body>
+</html>
