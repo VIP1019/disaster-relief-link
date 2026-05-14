@@ -11,7 +11,7 @@
         <div class="auth-card">
             <div class="auth-header">
                 <h1>Welcome to the Global Command.</h1>
-                <p>Authorized access only. Please authenticate to access the relief operations dashboard.</p>
+                <p>Authorized access for <strong>MDRRMO Daet</strong> and barangay officials (Camarines Norte).</p>
             </div>
 
             <form id="loginForm">
@@ -68,6 +68,7 @@
             try {
                 const response = await fetch('../php/api/auth.php?action=login', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });

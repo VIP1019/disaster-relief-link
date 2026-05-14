@@ -26,30 +26,7 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink Core</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Dashboard
-                </a></li>
-                <li><a href="submit-report.html" class="active">
-                    <svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>
-                    Submit Report
-                </a></li>
-                <li><a href="view-reports.html">
-                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    My Reports
-                </a></li>
-                <li><a href="notifications.html">
-                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    Notifications
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
@@ -95,7 +72,7 @@
                             <label class="form-label">Geographic Sector Mapping</label>
                             <div style="height: 180px; background: #172b4d; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; margin-top: 8px;">
                                 <div style="text-align: center;">
-                                    <div style="font-weight: 700;">Sector 7-B: Alpha Zone</div>
+                                    <div style="font-weight: 700;">Bagasbas coastal / flood-prone zone</div>
                                     <div style="opacity: 0.6;">Tap to calibrate coordinates</div>
                                 </div>
                             </div>
@@ -166,8 +143,12 @@
         </main>
     </div>
 
+    <script src="../js/relief-sidebar.js"></script>
     <script>
-        // Disaster Type Selection
+    document.addEventListener('DOMContentLoaded', async () => {
+        const user = await ReliefSidebar.mount();
+        if (!user || user.user_type !== 'barangay_official') return;
+
         const typeOptions = document.querySelectorAll('.type-option');
         typeOptions.forEach(opt => {
             opt.addEventListener('click', () => {
@@ -177,7 +158,6 @@
             });
         });
 
-        // Severity Selection
         const severityPoints = document.querySelectorAll('.severity-point');
         const severityMap = { 1: 'low', 2: 'medium', 3: 'high', 4: 'critical' };
         severityPoints.forEach(pt => {
@@ -210,6 +190,7 @@
             try {
                 const response = await fetch('../../php/api/reports.php?action=submit', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
@@ -228,6 +209,7 @@
                 btn.disabled = false;
             }
         });
+    });
     </script>
 </body>
 </html>

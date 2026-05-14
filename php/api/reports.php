@@ -3,9 +3,8 @@
  * Disaster Reports API Endpoints
  */
 
+require_once __DIR__ . '/_cors.php';
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 
 require_once __DIR__ . '/../classes/DisasterReport.php';
 require_once __DIR__ . '/../classes/Auth.php';
@@ -30,10 +29,25 @@ try {
         case 'submit':
             if ($request_method === 'POST') {
                 $data = json_decode(file_get_contents('php://input'), true);
-                
+
+                $barangay_id = isset($data['barangay_id']) ? (int) $data['barangay_id'] : 0;
+                if ($barangay_id <= 0) {
+                    $resolved = $report->getBarangayIdForUser($current_user['id']);
+                    if ($resolved) {
+                        $barangay_id = $resolved;
+                    } else {
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'No barangay linked to your profile. Use Registration with a barangay name that matches the master list, or ask MDRRMO to update your account.',
+                        ]);
+                        break;
+                    }
+                }
+
                 $result = $report->submitReport(
                     $current_user['id'],
-                    $data['barangay_id'] ?? '',
+                    $barangay_id,
                     $data['disaster_type'] ?? '',
                     $data['affected_families'] ?? 0,
                     $data['damaged_houses'] ?? 0,
@@ -54,18 +68,52 @@ try {
             }
             break;
 
+        case 'update_own':
+            if (in_array($request_method, ['PUT', 'POST'], true) && ($current_user['user_type'] ?? '') === 'barangay_official') {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $result = $report->updateOwnReport((int) $current_user['id'], $rid, $data);
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'delete_own':
+            if (in_array($request_method, ['DELETE', 'POST'], true) && ($current_user['user_type'] ?? '') === 'barangay_official') {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $result = $report->deleteOwnReport((int) $current_user['id'], $rid);
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
         case 'get':
             if ($request_method === 'GET') {
-                if ($report_id) {
-                    $result = $report->getReportById($report_id);
-                    if ($result) {
-                        http_response_code(200);
-                        echo json_encode(['success' => true, 'report' => $result]);
-                    } else {
-                        http_response_code(404);
-                        echo json_encode(['success' => false, 'message' => 'Report not found']);
-                    }
+                if (!$report_id) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'report_id required']);
+                    break;
                 }
+                $result = $report->getReportById($report_id);
+                if (!$result) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Report not found']);
+                    break;
+                }
+                if (!Auth::isAdmin() && (int) $result['user_id'] !== (int) $current_user['id']) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Forbidden']);
+                    break;
+                }
+                http_response_code(200);
+                echo json_encode(['success' => true, 'report' => $result]);
             }
             break;
 
@@ -92,16 +140,23 @@ try {
             break;
 
         case 'update_status':
-            if ($request_method === 'PUT' && Auth::isAdmin()) {
-                $data = json_decode(file_get_contents('php://input'), true);
-                
-                $result = $report->updateReportStatus($data['report_id'] ?? '', $data['status'] ?? '');
+            if (in_array($request_method, ['PUT', 'POST'], true) && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $report_id = (int) ($data['report_id'] ?? $data['id'] ?? 0);
+                $status = trim((string) ($data['status'] ?? ''));
+                $norm = strtolower($status);
+                if ($norm === 'approved' || $norm === 'approve') {
+                    $status = 'reviewed';
+                } elseif (in_array($norm, ['reject', 'rejected', 'dismiss'], true)) {
+                    $status = 'submitted';
+                }
+
+                $result = $report->updateReportStatus($report_id, $status);
 
                 if ($result['success']) {
-                    // Notify the reporting official
-                    $report_data = $report->getReportById($data['report_id']);
+                    $report_data = $report->getReportById($report_id);
                     if ($report_data) {
-                        $notification->notifyReportStatusChange($report_data['user_id'], $report_data['id'], $data['status']);
+                        $notification->notifyReportStatusChange($report_data['user_id'], $report_data['id'], $status);
                     }
                 }
 

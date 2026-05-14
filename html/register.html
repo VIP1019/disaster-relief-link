@@ -22,7 +22,7 @@
                 <div class="brand">ReliefLink Core</div>
                 <div class="sub-brand">Disaster Command & Relief Portal</div>
                 <h2>Official Registration</h2>
-                <p>Create your administrative account to access the command center.</p>
+                <p>Register as a barangay official for the <strong>Municipality of Daet, Camarines Norte</strong>.</p>
             </div>
 
             <form id="registerForm">
@@ -40,12 +40,33 @@
                     <div class="form-group">
                         <label class="form-label">Barangay Selection</label>
                         <select id="barangay" class="form-control" required>
-                            <option value="" disabled selected>Select Barangay</option>
-                            <option value="San Jose">San Jose</option>
-                            <option value="Santa Maria">Santa Maria</option>
+                            <option value="" disabled selected>Select Barangay (Daet)</option>
+                            <option value="Alawihao">Alawihao</option>
+                            <option value="Awitan">Awitan</option>
+                            <option value="Bagasbas">Bagasbas</option>
+                            <option value="Barangay I">Barangay I</option>
+                            <option value="Barangay II">Barangay II</option>
+                            <option value="Barangay III">Barangay III</option>
+                            <option value="Barangay IV">Barangay IV</option>
+                            <option value="Barangay V">Barangay V</option>
+                            <option value="Barangay VI">Barangay VI</option>
+                            <option value="Barangay VII">Barangay VII</option>
+                            <option value="Barangay VIII">Barangay VIII</option>
+                            <option value="Bibirao">Bibirao</option>
+                            <option value="Borabod">Borabod</option>
+                            <option value="Calasgasan">Calasgasan</option>
+                            <option value="Camambugan">Camambugan</option>
+                            <option value="Cobangbang">Cobangbang</option>
+                            <option value="Dogongan">Dogongan</option>
+                            <option value="Gahonon">Gahonon</option>
+                            <option value="Gubat">Gubat</option>
+                            <option value="Lag-on">Lag-on</option>
+                            <option value="Magang">Magang</option>
+                            <option value="Mambalite">Mambalite</option>
+                            <option value="Mancruz">Mancruz</option>
+                            <option value="Pamorangon">Pamorangon</option>
                             <option value="Poblacion">Poblacion</option>
-                            <option value="San Roque">San Roque</option>
-                            <option value="MDRRMO">MDRRMO (Admin Only)</option>
+                            <option value="San Isidro">San Isidro</option>
                         </select>
                     </div>
 
@@ -115,6 +136,7 @@
 
             try {
                 const response = await fetch('../php/api/auth.php?action=register', {
+                    credentials: 'include',
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)

@@ -3,9 +3,8 @@
  * Relief Management API Endpoints
  */
 
+require_once __DIR__ . '/_cors.php';
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 
 require_once __DIR__ . '/../classes/ReliefManagement.php';
 require_once __DIR__ . '/../classes/Auth.php';
@@ -49,7 +48,7 @@ try {
             break;
 
         case 'inventory_update':
-            if ($request_method === 'PUT' && Auth::isAdmin()) {
+            if (in_array($request_method, ['PUT', 'POST'], true) && Auth::isAdmin()) {
                 $data = json_decode(file_get_contents('php://input'), true);
                 
                 $result = $relief->updateInventoryItem(
@@ -71,16 +70,19 @@ try {
             break;
 
         case 'inventory_list':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $category = $_GET['category'] ?? null;
                 $items = $relief->getAllInventoryItems($category);
                 http_response_code(200);
                 echo json_encode(['success' => true, 'inventory' => $items]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 
         case 'inventory_get':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $item_id = $_GET['item_id'] ?? '';
                 $item = $relief->getInventoryItem($item_id);
                 
@@ -91,30 +93,94 @@ try {
                     http_response_code(404);
                     echo json_encode(['success' => false, 'message' => 'Item not found']);
                 }
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 
         case 'inventory_summary':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $summary = $relief->getInventorySummary();
                 http_response_code(200);
                 echo json_encode(['success' => true, 'summary' => $summary]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'barangays_list':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $rows = $relief->getAllBarangays();
+                http_response_code(200);
+                echo json_encode(['success' => true, 'barangays' => $rows]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'inventory_delete':
+            if (in_array($request_method, ['DELETE', 'POST'], true) && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $item_id = (int) ($data['item_id'] ?? $_GET['item_id'] ?? 0);
+                $result = $relief->deleteInventoryItem($item_id);
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 
         // ===== DISTRIBUTION ENDPOINTS =====
 
         case 'distribute':
+        case 'record_distribution':
             if ($request_method === 'POST' && Auth::isAdmin()) {
-                $data = json_decode(file_get_contents('php://input'), true);
-                
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+
+                $report_id = (int) ($data['report_id'] ?? 0);
+                $barangay_id = (int) ($data['barangay_id'] ?? 0);
+                if ($barangay_id <= 0 && !empty($data['barangay_name'])) {
+                    $resolved = $relief->resolveBarangayIdByName($data['barangay_name']);
+                    $barangay_id = $resolved ?: 0;
+                }
+                if ($report_id > 0 && $barangay_id <= 0) {
+                    $barangay_id = (int) ($relief->getBarangayIdForReport($report_id) ?: 0);
+                }
+                if ($report_id <= 0 && $barangay_id > 0) {
+                    $report_id = (int) ($relief->getLatestActiveReportIdForBarangay($barangay_id) ?: 0);
+                }
+
+                $inventory_id = (int) ($data['inventory_id'] ?? 0);
+                $qty = (int) ($data['quantity_distributed'] ?? $data['quantity'] ?? 0);
+                $notes = (string) ($data['notes'] ?? '');
+
+                if ($report_id > 0) {
+                    $from_report = $relief->getBarangayIdForReport($report_id);
+                    if ($from_report !== null && $from_report > 0) {
+                        $barangay_id = $from_report;
+                    }
+                }
+
+                if ($report_id <= 0 || $barangay_id <= 0 || $inventory_id <= 0 || $qty <= 0) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Could not record distribution. Ensure the barangay has an active disaster report (submitted/reviewed/prioritized), and send inventory_id plus quantity (or quantity_distributed).',
+                    ]);
+                    break;
+                }
+
                 $result = $relief->recordDistribution(
-                    $data['report_id'] ?? 0,
-                    $data['barangay_id'] ?? 0,
-                    $data['inventory_id'] ?? 0,
-                    $data['quantity_distributed'] ?? 0,
-                    $current_user['id'],
-                    $data['notes'] ?? ''
+                    $report_id,
+                    $barangay_id,
+                    $inventory_id,
+                    $qty,
+                    (int) $current_user['id'],
+                    $notes
                 );
 
                 http_response_code($result['success'] ? 201 : 400);
@@ -126,30 +192,39 @@ try {
             break;
 
         case 'distribution_list':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $barangay_id = $_GET['barangay_id'] ?? null;
                 $report_id = $_GET['report_id'] ?? null;
                 
                 $distributions = $relief->getAllDistributions($barangay_id, $report_id);
                 http_response_code(200);
                 echo json_encode(['success' => true, 'distributions' => $distributions]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 
         case 'distribution_barangay':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $barangay_id = $_GET['barangay_id'] ?? 0;
                 $history = $relief->getBarangayDistributionHistory($barangay_id);
                 http_response_code(200);
                 echo json_encode(['success' => true, 'history' => $history]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 
         case 'distribution_stats':
-            if ($request_method === 'GET') {
+            if ($request_method === 'GET' && Auth::isAdmin()) {
                 $stats = $relief->getDistributionStatistics();
                 http_response_code(200);
                 echo json_encode(['success' => true, 'statistics' => $stats]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
             }
             break;
 

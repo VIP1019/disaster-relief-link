@@ -23,11 +23,18 @@ class Notification {
             return ['success' => false, 'message' => 'Required fields missing'];
         }
 
-        $insert_query = "INSERT INTO {$this->table} (user_id, report_id, notification_type, message)
-                         VALUES (?, ?, ?, ?)";
-
-        $stmt = $this->conn->prepare($insert_query);
-        $stmt->bind_param('iiss', $user_id, $report_id, $notification_type, $message);
+        if ($report_id === null || $report_id === '') {
+            $insert_query = "INSERT INTO {$this->table} (user_id, notification_type, message)
+                             VALUES (?, ?, ?)";
+            $stmt = $this->conn->prepare($insert_query);
+            $stmt->bind_param('iss', $user_id, $notification_type, $message);
+        } else {
+            $insert_query = "INSERT INTO {$this->table} (user_id, report_id, notification_type, message)
+                             VALUES (?, ?, ?, ?)";
+            $stmt = $this->conn->prepare($insert_query);
+            $rid = (int) $report_id;
+            $stmt->bind_param('iiss', $user_id, $rid, $notification_type, $message);
+        }
 
         if ($stmt->execute()) {
             return ['success' => true, 'message' => 'Notification created', 'notification_id' => $this->conn->insert_id];
@@ -73,16 +80,21 @@ class Notification {
     /**
      * Mark notification as read
      */
-    public function markAsRead($notification_id) {
-        $update_query = "UPDATE {$this->table} SET is_read = TRUE WHERE id = ?";
-        
-        $stmt = $this->conn->prepare($update_query);
-        $stmt->bind_param('i', $notification_id);
+    public function markAsRead($notification_id, $user_id) {
+        $nid = (int) $notification_id;
+        $uid = (int) $user_id;
+        if ($nid <= 0 || $uid <= 0) {
+            return ['success' => false, 'message' => 'Invalid notification'];
+        }
+        $update_query = "UPDATE {$this->table} SET is_read = TRUE WHERE id = ? AND user_id = ?";
 
-        if ($stmt->execute()) {
+        $stmt = $this->conn->prepare($update_query);
+        $stmt->bind_param('ii', $nid, $uid);
+
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
             return ['success' => true, 'message' => 'Notification marked as read'];
         } else {
-            return ['success' => false, 'message' => 'Update failed'];
+            return ['success' => false, 'message' => 'Update failed or notification not found'];
         }
     }
 
@@ -105,16 +117,30 @@ class Notification {
     /**
      * Delete notification
      */
-    public function deleteNotification($notification_id) {
-        $delete_query = "DELETE FROM {$this->table} WHERE id = ?";
-        
-        $stmt = $this->conn->prepare($delete_query);
-        $stmt->bind_param('i', $notification_id);
+    public function deleteNotification($notification_id, $user_id, $admin = false) {
+        $nid = (int) $notification_id;
+        if ($nid <= 0) {
+            return ['success' => false, 'message' => 'Invalid notification'];
+        }
 
-        if ($stmt->execute()) {
+        if ($admin) {
+            $delete_query = "DELETE FROM {$this->table} WHERE id = ?";
+            $stmt = $this->conn->prepare($delete_query);
+            $stmt->bind_param('i', $nid);
+        } else {
+            $uid = (int) $user_id;
+            if ($uid <= 0) {
+                return ['success' => false, 'message' => 'Invalid user'];
+            }
+            $delete_query = "DELETE FROM {$this->table} WHERE id = ? AND user_id = ?";
+            $stmt = $this->conn->prepare($delete_query);
+            $stmt->bind_param('ii', $nid, $uid);
+        }
+
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
             return ['success' => true, 'message' => 'Notification deleted'];
         } else {
-            return ['success' => false, 'message' => 'Delete failed'];
+            return ['success' => false, 'message' => 'Delete failed or not found'];
         }
     }
 
@@ -152,6 +178,39 @@ class Notification {
         $message = $status_messages[$new_status] ?? 'Your report status has been updated.';
 
         return $this->createNotification($user_id, 'report_status_change', $message, $report_id);
+    }
+
+    /**
+     * Admin: all notifications with recipient name
+     */
+    public function getAllNotifications($limit = 200) {
+        $limit = (int) $limit;
+        if ($limit < 1) {
+            $limit = 200;
+        }
+        $query = "SELECT n.*, u.full_name AS recipient_name, u.username AS recipient_username
+                  FROM {$this->table} n
+                  INNER JOIN users u ON n.user_id = u.id
+                  ORDER BY n.created_at DESC
+                  LIMIT " . $limit;
+
+        $result = $this->conn->query($query);
+        if (!$result) {
+            return [];
+        }
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Admin: barangay officials for notification targeting.
+     */
+    public function getBarangayOfficialRecipients() {
+        $query = "SELECT id, full_name, username, barangay_name, email FROM users WHERE user_type = 'barangay_official' AND is_active = 1 ORDER BY barangay_name, full_name";
+        $result = $this->conn->query($query);
+        if (!$result) {
+            return [];
+        }
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 }
 ?>

@@ -16,54 +16,14 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink</div>
-            </div>
-            
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html" class="active">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Command Center
-                </a></li>
-                <li><a href="review-reports.html">
-                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Disaster Reports
-                </a></li>
-                <li><a href="prioritize-barangays.html">
-                    <svg class="icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    Priority Ranking
-                </a></li>
-                <li><a href="relief-inventory.html">
-                    <svg class="icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                    Resource Inventory
-                </a></li>
-                <li><a href="distribution.html">
-                    <svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                    Distribution Management
-                </a></li>
-                <li><a href="weather-monitoring.html">
-                    <svg class="icon"><path d="M17.5 19c.7 0 1.2-.6 1.2-1.2 0-.3-.1-.6-.3-.8l-1-1.1-1 1.1c-.2.2-.3.5-.3.8 0 .7.5 1.2 1.2 1.2z"></path><path d="M18 10c0-4.4-3.6-8-8-8s-8 3.6-8 8c0 2.2 1.8 4 4 4h1a4 4 0 0 1 4 4v1h1a4 4 0 0 0 4-4v-1h1a4 4 0 0 0 4-4z"></path></svg>
-                    Weather Monitoring
-                </a></li>
-            </ul>
-
-            <div class="sidebar-footer">
-                <a href="#" id="logoutBtn" style="color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 10px; font-size: 14px;">
-                    <svg class="icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Sign Out
-                </a>
-            </div>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-nav">
                 <div>
                     <h2 style="font-size: 20px;">MDRRMO Dashboard</h2>
-                    <p style="font-size: 13px; color: var(--text-subtle);">Sector Alpha-1 | Command Center</p>
+                    <p style="font-size: 13px; color: var(--text-subtle);">MDRRMO Daet, Camarines Norte | Command Center</p>
                 </div>
                 <div style="display: flex; gap: 16px; align-items: center;">
                     <button class="btn btn-primary" style="background: #172b4d;">
@@ -156,7 +116,7 @@
                     <div class="card-title">Response Teams</div>
                     <div style="display: flex; gap: 12px; flex-direction: column;">
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                            <span>Rescue Alpha (Sector 4)</span>
+                            <span>Rescue team — Camambugan flood response</span>
                             <span class="badge badge-success">Deployed</span>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
@@ -177,23 +137,21 @@
         </main>
     </div>
 
+    <script src="../js/relief-sidebar.js"></script>
     <script>
-        async function checkAuth() {
-            try {
-                const response = await fetch('../../php/api/auth.php?action=check');
-                const data = await response.json();
-                if (!data.success || data.user.user_type !== 'admin') window.location.href = '../login.html';
-                else loadDashboardData();
-            } catch (error) { window.location.href = '../login.html'; }
-        }
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            loadDashboardData();
+        });
 
         async function loadDashboardData() {
             try {
                 const [reports, priority, inventory, stats] = await Promise.all([
-                    fetch('../../php/api/reports.php?action=list_all').then(r => r.json()),
-                    fetch('../../php/api/priority.php?action=get_rankings').then(r => r.json()),
-                    fetch('../../php/api/relief.php?action=inventory_summary').then(r => r.json()),
-                    fetch('../../php/api/relief.php?action=distribution_stats').then(r => r.json())
+                    fetch('../../php/api/reports.php?action=list_all', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/priority.php?action=get_rankings', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=inventory_summary', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json())
                 ]);
 
                 if (reports.success) {
@@ -202,13 +160,14 @@
                 }
 
                 if (priority.success) {
-                    document.getElementById('criticalBarangays').textContent = priority.rankings.filter(r => r.overall_severity === 'Critical').length;
+                    document.getElementById('criticalBarangays').textContent = priority.rankings.filter(r => (r.overall_severity || '').toLowerCase() === 'critical').length;
                     populatePriorityTable(priority.rankings.slice(0, 5));
                 }
 
                 if (inventory.success) {
-                    document.getElementById('reliefItems').textContent = inventory.summary.reduce((acc, item) => acc + parseInt(item.quantity_available), 0);
-                    populateInventory(inventory.summary.slice(0, 4));
+                    const rows = inventory.summary || [];
+                    document.getElementById('reliefItems').textContent = rows.reduce((acc, item) => acc + parseInt(item.total_quantity || 0, 10), 0);
+                    populateInventory(rows.slice(0, 6));
                 }
             } catch (error) { console.error('Dashboard error:', error); }
         }
@@ -217,43 +176,36 @@
             const tbody = document.getElementById('priorityRankingBody');
             tbody.innerHTML = rankings.map(r => `
                 <tr>
-                    <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Rank #${r.rank}</div></td>
+                    <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Rank #${r.ranking_position}</div></td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="flex: 1; height: 4px; background: #dfe1e6; border-radius: 2px; overflow: hidden;">
-                                <div style="width: ${r.priority_score}%; height: 100%; background: ${r.overall_severity === 'Critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
+                                <div style="width: ${Math.min(parseFloat(r.priority_score) || 0, 100)}%; height: 100%; background: ${(r.overall_severity || '').toLowerCase() === 'critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
                             </div>
                             <span style="font-size: 12px; font-weight: 600;">${r.priority_score}</span>
                         </div>
                     </td>
                     <td>${Math.floor(Math.random() * 80 + 20)}%</td>
-                    <td><span class="badge badge-${r.overall_severity === 'Critical' ? 'danger' : 'success'}">${r.overall_severity}</span></td>
+                    <td><span class="badge badge-${(r.overall_severity || '').toLowerCase() === 'critical' ? 'danger' : 'success'}">${r.overall_severity}</span></td>
                 </tr>
             `).join('');
         }
 
         function populateInventory(items) {
             const container = document.getElementById('inventorySummary');
+            const qty = (item) => parseInt(item.total_quantity || 0, 10);
             container.innerHTML = items.map(item => `
                 <div style="margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                        <span style="font-weight: 500;">${item.item_name}</span>
-                        <span style="color: var(--text-subtle);">${parseInt(item.quantity_available).toLocaleString()} bags</span>
+                        <span style="font-weight: 500;">${item.category || 'Category'}</span>
+                        <span style="color: var(--text-subtle);">${qty(item).toLocaleString()} units</span>
                     </div>
                     <div style="height: 6px; background: #dfe1e6; border-radius: 3px; overflow: hidden;">
-                        <div style="width: ${Math.min((parseInt(item.quantity_available)/10000)*100, 100)}%; height: 100%; background: var(--success);"></div>
+                        <div style="width: ${Math.min((qty(item) / 10000) * 100, 100)}%; height: 100%; background: var(--success);"></div>
                     </div>
                 </div>
             `).join('');
         }
-
-        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('../../php/api/auth.php?action=logout');
-            window.location.href = '../login.html';
-        });
-
-        checkAuth();
     </script>
 </body>
 </html>

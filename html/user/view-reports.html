@@ -16,30 +16,7 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink Core</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Dashboard
-                </a></li>
-                <li><a href="submit-report.html">
-                    <svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>
-                    Submit Report
-                </a></li>
-                <li><a href="view-reports.html" class="active">
-                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    My Reports
-                </a></li>
-                <li><a href="notifications.html">
-                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    Notifications
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
@@ -64,103 +41,142 @@
                         <thead>
                             <tr>
                                 <th>Report ID</th>
-                                <th>Date Submitted</th>
-                                <th>Priority High</th>
-                                <th>Impact Status</th>
+                                <th>Submitted</th>
+                                <th>Disaster</th>
+                                <th>Status</th>
+                                <th>Severity</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="reportsTableBody">
-                            <!-- Example Data from Figure 5 -->
-                            <tr>
-                                <td><span class="report-id">#RL-2024-0892</span></td>
-                                <td>Oct 24, 2024 • 09:12 AM</td>
-                                <td><span class="badge badge-danger">PENDING</span></td>
-                                <td><span class="badge badge-danger">CRITICAL</span></td>
-                                <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Review</button></td>
-                            </tr>
-                            <tr>
-                                <td><span class="report-id">#RL-2024-0891</span></td>
-                                <td>Oct 23, 2024 • 02:45 PM</td>
-                                <td><span class="badge badge-success">SCHEDULED</span></td>
-                                <td><span class="badge badge-info">MEDIUM</span></td>
-                                <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Review</button></td>
-                            </tr>
-                            <tr>
-                                <td><span class="report-id">#RL-2024-0890</span></td>
-                                <td>Oct 23, 2024 • 01:15 PM</td>
-                                <td><span class="badge badge-success">DELIVERED</span></td>
-                                <td><span class="badge badge-success">STABLE</span></td>
-                                <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Review</button></td>
-                            </tr>
+                            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="pagination">
-                    <button class="page-btn active">1</button>
-                    <button class="page-btn">2</button>
-                    <button class="page-btn">3</button>
-                    <span style="display: flex; align-items: center; padding: 0 8px; color: var(--text-subtle);">...</span>
-                    <button class="page-btn">14</button>
-                </div>
+                <div class="pagination" style="display:none;" aria-hidden="true"></div>
             </div>
 
-            <!-- Detail Assessment Card (Figure 5) -->
-            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; margin-top: 24px;" class="animate-fade-in">
-                <div class="card" style="background: #172b4d; color: #fff;">
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 8px;">Active Review</div>
-                    <h3 style="font-size: 18px; margin-bottom: 16px;">REP-2024-0812</h3>
-                    <div style="font-size: 11px; margin-bottom: 4px;">Status: Pending Verification</div>
-                    <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 24px;">
-                        <div style="width: 94.2%; height: 100%; background: #fff;"></div>
+            <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center; padding:24px;">
+                <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;">
+                    <h3 style="margin-bottom:16px;">Edit report</h3>
+                    <input type="hidden" id="editReportId">
+                    <div class="form-group"><label class="form-label">Disaster type</label><input type="text" id="editDisasterType" class="form-control"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Affected families</label><input type="number" id="editAff" class="form-control" min="0"></div>
+                        <div class="form-group"><label class="form-label">Damaged houses</label><input type="number" id="editDam" class="form-control" min="0"></div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <div style="font-size: 10px; opacity: 0.6;">APPROVAL RATE</div>
-                            <div style="font-size: 24px; font-weight: 700;">94.2%</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 10px; opacity: 0.6;">TIME ELAPSED</div>
-                            <div style="font-size: 18px; font-weight: 700;">18m 42s</div>
-                        </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Injured</label><input type="number" id="editInj" class="form-control" min="0"></div>
+                        <div class="form-group"><label class="form-label">Deaths</label><input type="number" id="editDeath" class="form-control" min="0"></div>
                     </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">
-                        <span>Incident Profile: REP-2024-0812</span>
-                        <span class="badge badge-info">Sector Alpha-1</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <div style="font-size: 10px; color: var(--text-subtle); text-transform: uppercase; margin-bottom: 4px;">Severity Assessment</div>
-                            <div style="font-size: 13px; font-weight: 700; color: var(--danger); margin-bottom: 12px;">High Priority (Level 3)</div>
-                            <p style="font-size: 12px; color: var(--text-subtle); line-height: 1.4;">Damages observed in Sector 7-B Alpha Zone. Priority assistance required for 142 families.</p>
-                        </div>
-                        <div style="text-align: center; border-left: 1px solid var(--border); padding-left: 16px;">
-                            <div style="font-size: 10px; color: var(--text-subtle); text-transform: uppercase; margin-bottom: 12px;">Active Responders</div>
-                            <div style="font-size: 28px; font-weight: 800;">12</div>
-                            <button class="btn btn-sm btn-primary" style="margin-top: 12px; width: 100%;">View Dispatch</button>
-                        </div>
+                    <div class="form-group"><label class="form-label">Description</label><textarea id="editDesc" class="form-control" rows="4"></textarea></div>
+                    <div style="display:flex;gap:12px;margin-top:8px;">
+                        <button type="button" class="btn btn-primary" id="saveEditReport">Save</button>
+                        <button type="button" class="btn" style="border:1px solid var(--border);" id="cancelEditReport">Cancel</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="../js/relief-sidebar.js"></script>
     <script>
+        const api = '../../php/api';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'barangay_official') return;
+            loadReports();
+            document.getElementById('saveEditReport').addEventListener('click', saveEdit);
+            document.getElementById('cancelEditReport').addEventListener('click', () => { document.getElementById('editModal').style.display = 'none'; });
+        });
+
+        function statusBadge(st) {
+            const s = (st || '').toLowerCase();
+            const cls = s === 'submitted' ? 'warning' : (s === 'relief_distributed' ? 'success' : 'info');
+            return `<span class="badge badge-${cls}">${(st || '').replace('_', ' ').toUpperCase()}</span>`;
+        }
+
         async function loadReports() {
             try {
-                const response = await fetch('../../php/api/reports.php?action=list_user');
+                const response = await fetch(api + '/reports.php?action=list_user', { credentials: 'include' });
                 const data = await response.json();
-                if (data.success && data.reports.length > 0) {
-                    // Update table logic here
+                const tbody = document.getElementById('reportsTableBody');
+                if (!data.success || !data.reports || data.reports.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-subtle);">No reports yet. Submit one from the menu.</td></tr>';
+                    return;
                 }
+                tbody.innerHTML = data.reports.map(r => {
+                    const when = r.submitted_at ? new Date(r.submitted_at.replace(' ', 'T')).toLocaleString() : '—';
+                    const canEdit = r.status === 'submitted';
+                    return `<tr>
+                        <td><span class="report-id">#${r.id}</span></td>
+                        <td style="font-size:12px;">${when}</td>
+                        <td><span class="badge badge-info">${(r.disaster_type || '').toUpperCase()}</span></td>
+                        <td>${statusBadge(r.status)}</td>
+                        <td><span class="badge badge-${r.severity_level === 'critical' ? 'danger' : 'primary'}">${(r.severity_level || '').toUpperCase()}</span></td>
+                        <td>
+                            ${canEdit ? `<button type="button" class="btn btn-sm btn-primary" onclick="openEdit(${r.id})">Edit</button>
+                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Locked</span>'}
+                        </td>
+                    </tr>`;
+                }).join('');
             } catch (error) { console.error('Reports error:', error); }
         }
-        
-        loadReports();
+
+        async function openEdit(id) {
+            const res = await fetch(api + '/reports.php?action=get&report_id=' + id, { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success || !data.report) return;
+            const r = data.report;
+            if (r.status !== 'submitted') { alert('Only submitted reports can be edited.'); return; }
+            document.getElementById('editReportId').value = r.id;
+            document.getElementById('editDisasterType').value = r.disaster_type || '';
+            document.getElementById('editAff').value = r.affected_families;
+            document.getElementById('editDam').value = r.damaged_houses;
+            document.getElementById('editInj').value = r.injured_count;
+            document.getElementById('editDeath').value = r.death_count;
+            document.getElementById('editDesc').value = r.description || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        async function saveEdit() {
+            const id = +document.getElementById('editReportId').value;
+            const body = {
+                report_id: id,
+                disaster_type: document.getElementById('editDisasterType').value,
+                affected_families: +document.getElementById('editAff').value,
+                damaged_houses: +document.getElementById('editDam').value,
+                injured_count: +document.getElementById('editInj').value,
+                death_count: +document.getElementById('editDeath').value,
+                description: document.getElementById('editDesc').value
+            };
+            const res = await fetch(api + '/reports.php?action=update_own', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) {
+                document.getElementById('editModal').style.display = 'none';
+                loadReports();
+            } else alert(j.message || 'Update failed');
+        }
+
+        async function deleteReport(id) {
+            if (!confirm('Delete this submitted report permanently?')) return;
+            const res = await fetch(api + '/reports.php?action=delete_own', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: id })
+            });
+            const j = await res.json();
+            if (j.success) loadReports();
+            else alert(j.message || 'Delete failed');
+        }
     </script>
 </body>
 </html>

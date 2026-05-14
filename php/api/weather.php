@@ -3,9 +3,8 @@
  * Weather API Endpoints
  */
 
+require_once __DIR__ . '/_cors.php';
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST');
 
 require_once __DIR__ . '/../classes/WeatherAPI.php';
 require_once __DIR__ . '/../classes/Auth.php';
@@ -32,7 +31,13 @@ try {
                 if ($latitude && $longitude) {
                     $weather_data = $weather->getWeatherData($latitude, $longitude, $barangay_id);
                     http_response_code(200);
-                    echo json_encode(['success' => true, 'weather' => $weather_data]);
+                    echo json_encode([
+                        'success' => true,
+                        'weather' => $weather_data,
+                        'weather_provider' => $weather->getProvider(),
+                        'weather_ready' => $weather->isKeyConfigured(),
+                        'openweather_configured' => $weather->isKeyConfigured(),
+                    ]);
                 } else {
                     http_response_code(400);
                     echo json_encode(['success' => false, 'message' => 'Latitude and longitude required']);
@@ -60,7 +65,57 @@ try {
                 
                 $recent_data = $weather->getAllRecentWeatherData($limit);
                 http_response_code(200);
-                echo json_encode(['success' => true, 'weather_data' => $recent_data]);
+                echo json_encode([
+                    'success' => true,
+                    'weather_data' => $recent_data,
+                    'weather_provider' => $weather->getProvider(),
+                    'weather_ready' => $weather->isKeyConfigured(),
+                    'openweather_configured' => $weather->isKeyConfigured(),
+                ]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'barangay_dashboard':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $dash = $weather->getDashboardWeatherByBarangay();
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'rows' => $dash['rows'],
+                    'summary' => $dash['summary'],
+                    'weather_provider' => $weather->getProvider(),
+                    'weather_ready' => $weather->isKeyConfigured(),
+                    'openweather_configured' => $weather->isKeyConfigured(),
+                ]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'sync_barangays':
+            if (in_array($request_method, ['POST', 'GET'], true) && Auth::isAdmin()) {
+                $result = $weather->syncAllBarangays();
+                http_response_code($result['success'] ? 200 : 503);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'config_status':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'weather_provider' => $weather->getProvider(),
+                    'weather_ready' => $weather->isKeyConfigured(),
+                    'openweather_configured' => $weather->isKeyConfigured(),
+                ]);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

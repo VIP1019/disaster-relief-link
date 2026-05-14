@@ -5,148 +5,302 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Weather API Monitoring</title>
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <style>
         .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
         .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
         .weather-gauge { text-align: center; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
-        .gauge-value { font-size: 32px; font-weight: 800; color: var(--primary); margin: 8px 0; }
+        .gauge-value { font-size: 28px; font-weight: 800; color: var(--primary); margin: 8px 0; line-height: 1.15; }
         .gauge-label { font-size: 11px; font-weight: 700; color: var(--text-subtle); text-transform: uppercase; }
-        .radar-box { background: #000; height: 300px; border-radius: 12px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        .radar-scan { position: absolute; width: 100%; height: 100%; background: conic-gradient(from 0deg, rgba(0,255,0,0.2) 0deg, transparent 90deg); animation: scan 4s linear infinite; }
-        @keyframes scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .radar-grid { position: absolute; width: 100%; height: 100%; background-image: radial-gradient(circle, rgba(0,255,0,0.1) 1px, transparent 1px); background-size: 40px 40px; }
+        .gauge-sub { font-size: 10px; color: var(--text-subtle); min-height: 14px; }
+        #weatherMap { height: 320px; width: 100%; border-radius: 0 0 12px 12px; z-index: 1; }
+        .map-card-title { padding: 12px 16px; font-weight: 700; border-bottom: 1px solid var(--border); }
+        @media (max-width: 1100px) {
+            .gauge-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .main-grid { grid-template-columns: 1fr !important; }
+        }
     </style>
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Command Center
-                </a></li>
-                <li><a href="weather-monitoring.html" class="active">
-                    <svg class="icon"><path d="M17.5 19c.7 0 1.2-.6 1.2-1.2 0-.3-.1-.6-.3-.8l-1-1.1-1 1.1c-.2.2-.3.5-.3.8 0 .7.5 1.2 1.2 1.2z"></path><path d="M18 10c0-4.4-3.6-8-8-8s-8 3.6-8 8c0 2.2 1.8 4 4 4h1a4 4 0 0 1 4 4v1h1a4 4 0 0 0 4-4v-1h1a4 4 0 0 0 4-4z"></path></svg>
-                    Weather Monitoring
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
                 <div>
                     <h2 style="font-size: 20px;">Weather API Monitoring</h2>
-                    <p style="font-size: 13px; color: var(--text-subtle);">System Node: Alpha-1 | Real-time environmental sync</p>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Daet, Camarines Norte | <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> forecast</p>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn btn-primary" id="syncBtn">Force API Sync</button>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button type="button" class="btn" id="exportCsvBtn" style="border: 1px solid var(--border);">Export CSV</button>
+                    <button type="button" class="btn btn-primary" id="syncBtn">Force API Sync</button>
                 </div>
             </header>
 
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px;" class="animate-fade-in">
+            <div id="weatherInfoBanner" style="margin-bottom: 16px; padding: 12px 16px; background: #e3fcef; border: 1px solid #36b37e; border-radius: 8px; font-size: 13px;">
+                Live conditions use the free <a href="https://open-meteo.com/" target="_blank" rel="noopener"><strong>Open-Meteo</strong></a> Forecast API — <strong>no API key</strong> required for typical municipal / academic use. Credit the data source in your thesis. Click <strong>Force API Sync</strong> to fetch current weather for <strong>every barangay</strong> in the database. The map shows barangay pins; gauges summarize the whole area (max / mean where noted).
+            </div>
+            <div class="gauge-grid animate-fade-in" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px;">
                 <div class="weather-gauge">
-                    <div class="gauge-label">Precipitation</div>
-                    <div class="gauge-value" id="precipValue">24%</div>
-                    <div style="font-size: 10px; color: var(--success);">STABLE</div>
+                    <div class="gauge-label">Humidity (area max)</div>
+                    <div class="gauge-value" id="humidityGauge">—</div>
+                    <div class="gauge-sub" id="humiditySub">—</div>
                 </div>
                 <div class="weather-gauge">
-                    <div class="gauge-label">Atmospheric Pressure</div>
-                    <div class="gauge-value" id="pressureValue">1012 hPa</div>
-                    <div style="font-size: 10px; color: var(--text-subtle);">NORMAL</div>
+                    <div class="gauge-label">Surface pressure (mean)</div>
+                    <div class="gauge-value" id="pressureGauge">—</div>
+                    <div class="gauge-sub" id="pressureSub">—</div>
                 </div>
                 <div class="weather-gauge">
-                    <div class="gauge-label">High Risk - Flood</div>
-                    <div class="gauge-value" style="color: var(--danger);" id="floodRisk">24°C</div>
-                    <div style="font-size: 10px; color: var(--danger);">WARNING ACTIVE</div>
+                    <div class="gauge-label">Flood risk (worst barangay)</div>
+                    <div class="gauge-value" id="floodGauge">—</div>
+                    <div class="gauge-sub" id="floodSub">From rain + precip probability + WMO code</div>
                 </div>
                 <div class="weather-gauge">
-                    <div class="gauge-label">Visibility</div>
-                    <div class="gauge-value" id="visibilityValue">12.5 km</div>
-                    <div style="font-size: 10px; color: var(--text-subtle);">LAST SYNC: 2M AGO</div>
+                    <div class="gauge-label">Wind (area max)</div>
+                    <div class="gauge-value" id="windGauge">—</div>
+                    <div class="gauge-sub" id="windSub">Open-Meteo · m/s</div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;" class="animate-fade-in">
+            <div class="main-grid animate-fade-in" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px;">
                 <div class="card" style="padding: 0; overflow: hidden;">
-                    <div class="radar-box">
-                        <div class="radar-grid"></div>
-                        <div class="radar-scan"></div>
-                        <div style="z-index: 10; text-align: center; color: #00ff00; font-family: monospace;">
-                            <div style="font-size: 14px; font-weight: 700; letter-spacing: 2px;">LIVE RADAR FEED</div>
-                            <div style="font-size: 10px; opacity: 0.8;">SCANNING SECTOR ALPHA-1...</div>
-                            <img src="https://www.google.com/maps/vt/pb=!1m4!1m3!1i10!2i864!3i422!2m3!1e0!2sm!3i123456789!3m8!2sen!3sph!4e1105!6m6!1e12!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af" style="width: 100%; height: 200px; object-fit: cover; opacity: 0.3; margin-top: 10px;">
-                        </div>
-                        <div style="position: absolute; bottom: 10px; right: 10px; color: #00ff00; font-family: monospace; font-size: 8px; text-align: right;">
-                            LAT: 14.5995 | LONG: 120.9842<br>ALT: 12.4m
-                        </div>
-                    </div>
+                    <div class="map-card-title">Barangay map (OpenStreetMap)</div>
+                    <div id="weatherMap" role="application" aria-label="Barangay weather map"></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-title">Barangay Weather Status</div>
-                    <div class="table-container">
+                    <div class="card-title">Barangay weather (one row per barangay)</div>
+                    <div class="table-container" style="max-height: 420px; overflow: auto;">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Location</th>
                                     <th>Temp</th>
-                                    <th>Condition</th>
+                                    <th>RH%</th>
+                                    <th>Wind</th>
+                                    <th>hPa</th>
+                                    <th>Rain mm</th>
+                                    <th>P%</th>
+                                    <th>Flood</th>
+                                    <th>Sky</th>
+                                    <th>Logged</th>
                                 </tr>
                             </thead>
                             <tbody id="weatherTableBody">
-                                <!-- Populated by JS -->
-                                <tr><td colspan="3" style="text-align: center; color: var(--text-subtle);">Fetching node data...</td></tr>
+                                <tr><td colspan="10" style="text-align: center; color: var(--text-subtle);">Loading…</td></tr>
                             </tbody>
                         </table>
                     </div>
-                    <button class="btn btn-block" style="margin-top: 16px; border: 1px solid var(--border);">EXPORT CSV</button>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="../js/relief-sidebar.js"></script>
     <script>
-        async function fetchWeather() {
-            try {
-                const response = await fetch('../../php/api/weather.php?action=get_weather');
-                const data = await response.json();
-                if (data.success) {
-                    const tbody = document.getElementById('weatherTableBody');
-                    tbody.innerHTML = data.weather_data.map(w => `
-                        <tr>
-                            <td><div style="font-weight: 600;">${w.barangay_name}</div></td>
-                            <td>${w.temperature}°C</td>
-                            <td><span class="badge badge-info">${w.condition}</span></td>
-                        </tr>
-                    `).join('');
-                    
-                    // Update gauges with first result as sample
-                    if (data.weather_data.length > 0) {
-                        const sample = data.weather_data[0];
-                        document.getElementById('precipValue').textContent = sample.humidity + '%';
-                        document.getElementById('floodRisk').textContent = sample.temperature + '°C';
-                    }
-                }
-            } catch (error) { console.error('Weather error:', error); }
+        function esc(s) {
+            if (s == null || s === '') return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
         }
 
-        document.getElementById('syncBtn').addEventListener('click', () => {
+        let mapInstance = null;
+        let markerLayer = null;
+        let lastDashboard = null;
+
+        function floodStyle(level) {
+            const u = String(level || 'LOW').toUpperCase();
+            if (u === 'EXTREME' || u === 'HIGH') return { color: 'var(--danger)', weight: 700 };
+            if (u === 'MODERATE') return { color: '#b26a00', weight: 600 };
+            return { color: 'var(--success)', weight: 600 };
+        }
+
+        function renderMap(rows) {
+            if (typeof L === 'undefined' || !document.getElementById('weatherMap')) return;
+            const center = [14.1128, 122.9559];
+            if (!mapInstance) {
+                mapInstance = L.map('weatherMap', { scrollWheelZoom: true }).setView(center, 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(mapInstance);
+                markerLayer = L.layerGroup().addTo(mapInstance);
+            }
+            markerLayer.clearLayers();
+            const pts = [];
+            (rows || []).forEach((r) => {
+                const lat = r.latitude;
+                const lon = r.longitude;
+                if (lat == null || lon == null || isNaN(+lat) || isNaN(+lon)) return;
+                const fl = r.flood_risk_level != null ? esc(r.flood_risk_level) : '—';
+                const fs = r.flood_risk_score != null ? esc(r.flood_risk_score) : '—';
+                const html = '<strong>' + esc(r.barangay_name) + '</strong><br>' +
+                    (r.temperature != null ? esc(r.temperature) + '°C · ' : '') +
+                    (r.humidity != null ? esc(r.humidity) + '% RH · ' : '') +
+                    (r.wind_speed != null ? esc(r.wind_speed) + ' m/s' : '') +
+                    '<br>Flood index: ' + fs + ' (' + fl + ')' +
+                    (r.surface_pressure_hpa != null ? '<br>Pressure: ' + esc(r.surface_pressure_hpa) + ' hPa' : '');
+                const m = L.marker([+lat, +lon]).bindPopup(html);
+                m.addTo(markerLayer);
+                pts.push([+lat, +lon]);
+            });
+            if (pts.length === 1) {
+                mapInstance.setView(pts[0], 13);
+            } else if (pts.length > 1) {
+                mapInstance.fitBounds(L.latLngBounds(pts), { padding: [28, 28], maxZoom: 13 });
+            } else {
+                mapInstance.setView(center, 12);
+            }
+            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 200);
+        }
+
+        function applySummary(summary) {
+            const s = summary || {};
+            document.getElementById('humidityGauge').textContent = s.humidity_max != null ? s.humidity_max + '%' : '—';
+            document.getElementById('humiditySub').textContent = s.humidity_note || '—';
+
+            document.getElementById('pressureGauge').textContent = s.pressure_mean_hpa != null ? s.pressure_mean_hpa + ' hPa' : '—';
+            document.getElementById('pressureSub').textContent = s.pressure_note || 'Mean across barangays with data';
+
+            const fl = (s.flood_worst_level || 'LOW').toString().toUpperCase();
+            const fs = s.flood_max_score;
+            const fg = document.getElementById('floodGauge');
+            const fsub = document.getElementById('floodSub');
+            if (fs != null) {
+                fg.textContent = fl + ' · ' + fs + '/100';
+                const st = floodStyle(fl);
+                fg.style.color = st.color;
+                fg.style.fontWeight = String(st.weight);
+                fsub.textContent = 'Worst level by composite precip + probability + weather code';
+            } else {
+                fg.textContent = '—';
+                fg.style.color = 'var(--primary)';
+                fg.style.fontWeight = '800';
+                fsub.textContent = 'Run sync after upgrade — logs need Open-Meteo `current` block';
+            }
+
+            document.getElementById('windGauge').textContent = s.wind_max_ms != null ? s.wind_max_ms + ' m/s' : '—';
+            document.getElementById('windSub').textContent = s.wind_max_ms != null ? 'Max wind among barangays' : '—';
+        }
+
+        function renderTable(rows) {
+            const tbody = document.getElementById('weatherTableBody');
+            if (!Array.isArray(rows) || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-subtle);">No barangays in database.</td></tr>';
+                return;
+            }
+            const anyLog = rows.some((r) => r.api_call_time);
+            if (!anyLog) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-subtle);">No weather logs yet. Click <strong>Force API Sync</strong> to pull Open-Meteo for every barangay.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map((w) => {
+                const t = w.api_call_time ? new Date(String(w.api_call_time).replace(' ', 'T')).toLocaleString() : '—';
+                const sky = w.weather_condition || '—';
+                const flood = w.flood_risk_score != null
+                    ? '<span style="font-weight:700">' + esc(w.flood_risk_score) + '</span> <span style="font-size:10px;color:var(--text-subtle);">' + esc(w.flood_risk_level || '') + '</span>'
+                    : '—';
+                return '<tr>' +
+                    '<td><div style="font-weight: 600;">' + esc(w.barangay_name) + '</div></td>' +
+                    '<td>' + (w.temperature != null ? esc(w.temperature) + '°C' : '—') + '</td>' +
+                    '<td>' + (w.humidity != null ? esc(w.humidity) + '%' : '—') + '</td>' +
+                    '<td>' + (w.wind_speed != null ? esc(w.wind_speed) + ' m/s' : '—') + '</td>' +
+                    '<td>' + (w.surface_pressure_hpa != null ? esc(w.surface_pressure_hpa) : '—') + '</td>' +
+                    '<td>' + (w.precipitation_mm != null ? esc(w.precipitation_mm) : '—') + '</td>' +
+                    '<td>' + (w.precipitation_probability != null ? esc(w.precipitation_probability) + '%' : '—') + '</td>' +
+                    '<td style="white-space:nowrap;">' + flood + '</td>' +
+                    '<td><span class="badge badge-info">' + esc(sky) + '</span></td>' +
+                    '<td style="font-size:11px;color:var(--text-subtle);">' + esc(t) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        async function fetchWeather() {
+            const tbody = document.getElementById('weatherTableBody');
+            try {
+                const response = await fetch('../../php/api/weather.php?action=barangay_dashboard', { credentials: 'include' });
+                const data = await response.json();
+                if (!data.success) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--danger);">Could not load dashboard.</td></tr>';
+                    return;
+                }
+                lastDashboard = data;
+                applySummary(data.summary);
+                renderTable(data.rows || []);
+                renderMap(data.rows || []);
+            } catch (error) {
+                console.error('Weather error:', error);
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--danger);">Network error loading weather.</td></tr>';
+            }
+        }
+
+        function exportCsv() {
+            const data = lastDashboard;
+            if (!data || !Array.isArray(data.rows) || !data.rows.length) {
+                alert('Nothing to export yet.');
+                return;
+            }
+            const headers = ['barangay_name', 'latitude', 'longitude', 'temperature_c', 'humidity_pct', 'wind_ms', 'pressure_hpa', 'rain_mm', 'rain_prob_pct', 'flood_score', 'flood_level', 'condition', 'logged_at'];
+            const lines = [headers.join(',')];
+            data.rows.forEach((w) => {
+                const row = [
+                    '"' + String(w.barangay_name || '').replace(/"/g, '""') + '"',
+                    w.latitude, w.longitude,
+                    w.temperature, w.humidity, w.wind_speed,
+                    w.surface_pressure_hpa, w.precipitation_mm, w.precipitation_probability,
+                    w.flood_risk_score, '"' + String(w.flood_risk_level || '').replace(/"/g, '""') + '"',
+                    '"' + String(w.weather_condition || '').replace(/"/g, '""') + '"',
+                    '"' + String(w.api_call_time || '').replace(/"/g, '""') + '"'
+                ];
+                lines.push(row.join(','));
+            });
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'relieflink-weather-barangay-dashboard.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            fetchWeather();
+            setInterval(fetchWeather, 300000);
+            document.getElementById('syncBtn').addEventListener('click', runSync);
+            document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+        });
+
+        async function runSync() {
             const btn = document.getElementById('syncBtn');
             btn.textContent = 'Syncing...';
             btn.disabled = true;
-            setTimeout(() => {
-                fetchWeather();
-                btn.textContent = 'Force API Sync';
-                btn.disabled = false;
-            }, 1500);
-        });
-
-        fetchWeather();
-        setInterval(fetchWeather, 300000); // 5 min
+            try {
+                const res = await fetch('../../php/api/weather.php?action=sync_barangays', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}'
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!json.success) {
+                    alert(json.message || 'Sync failed');
+                } else {
+                    let msg = json.message || 'Done';
+                    if (json.errors && json.errors.length) {
+                        msg += '\n\n' + json.errors.slice(0, 5).join('\n');
+                        if (json.errors.length > 5) msg += '\n…';
+                    }
+                    alert(msg);
+                }
+                await fetchWeather();
+            } catch (e) {
+                alert('Sync request failed.');
+            }
+            btn.textContent = 'Force API Sync';
+            btn.disabled = false;
+        }
     </script>
 </body>
 </html>

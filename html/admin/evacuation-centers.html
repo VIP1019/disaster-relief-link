@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Evacuation Centers</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; padding: 24px; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; padding: 24px; max-height: 90vh; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Evacuation Centers</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Shelters and sites — Municipality of Daet, Camarines Norte</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="openAddBtn">Add center</button>
+            </header>
+
+            <div class="card animate-fade-in">
+                <div class="card-title"><span>Registered centers</span></div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Center</th>
+                                <th>Barangay</th>
+                                <th>Capacity / Occ.</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ecTableBody">
+                            <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card animate-fade-in" style="margin-top:24px;">
+                <div class="card-title"><span>Quick add</span></div>
+                <form id="ecForm" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Barangay</label>
+                        <select id="ecBarangay" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select id="ecStatus" class="form-control">
+                            <option value="open">open</option>
+                            <option value="full">full</option>
+                            <option value="closed">closed</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label">Center name</label>
+                        <input type="text" id="ecName" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label">Address</label>
+                        <textarea id="ecAddress" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Capacity</label>
+                        <input type="number" id="ecCap" class="form-control" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current occupancy</label>
+                        <input type="number" id="ecOcc" class="form-control" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Contact person</label>
+                        <input type="text" id="ecContact" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Contact phone</label>
+                        <input type="text" id="ecPhone" class="form-control">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label">Facilities</label>
+                        <input type="text" id="ecFac" class="form-control" placeholder="e.g. kitchen, toilets">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Latitude</label>
+                        <input type="text" id="ecLat" class="form-control" placeholder="optional">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Longitude</label>
+                        <input type="text" id="ecLon" class="form-control" placeholder="optional">
+                    </div>
+                    <div style="grid-column:1/-1;">
+                        <button type="submit" class="btn btn-primary">Save center</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom:16px;">Edit center</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group"><label class="form-label">Barangay</label><select id="editBarangay" class="form-control"></select></div>
+            <div class="form-group"><label class="form-label">Center name</label><input type="text" id="editName" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Address</label><textarea id="editAddress" class="form-control" rows="2"></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group"><label class="form-label">Capacity</label><input type="number" id="editCap" class="form-control" min="0"></div>
+                <div class="form-group"><label class="form-label">Occupancy</label><input type="number" id="editOcc" class="form-control" min="0"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group"><label class="form-label">Contact</label><input type="text" id="editContact" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Phone</label><input type="text" id="editPhone" class="form-control"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Facilities</label><input type="text" id="editFac" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Status</label>
+                <select id="editStatus" class="form-control"><option value="open">open</option><option value="full">full</option><option value="closed">closed</option></select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group"><label class="form-label">Latitude</label><input type="text" id="editLat" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Longitude</label><input type="text" id="editLon" class="form-control"></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;">
+                <button type="button" class="btn btn-primary" id="saveEditBtn">Save</button>
+                <button type="button" class="btn" style="border:1px solid var(--border);" id="cancelEditBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/relief-sidebar.js"></script>
+    <script>
+        const api = '../../php/api';
+
+        async function loadBarangaySelects() {
+            const res = await fetch(api + '/relief.php?action=barangays_list', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success || !data.barangays) return;
+            const opts = data.barangays.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+            document.getElementById('ecBarangay').innerHTML = opts;
+            document.getElementById('editBarangay').innerHTML = opts;
+        }
+
+        async function loadCenters() {
+            const res = await fetch(api + '/evacuation.php?action=list', { credentials: 'include' });
+            const data = await res.json();
+            const tbody = document.getElementById('ecTableBody');
+            if (!data.success || !data.centers || data.centers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">No centers yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.centers.map(c => `
+                <tr>
+                    <td><div style="font-weight:600;">${c.center_name}</div><div style="font-size:11px;color:var(--text-subtle);">${c.address || '—'}</div></td>
+                    <td>${c.barangay_name}</td>
+                    <td>${c.current_occupancy} / ${c.capacity}</td>
+                    <td><span class="badge badge-${c.status === 'open' ? 'success' : (c.status === 'full' ? 'warning' : 'danger')}">${c.status}</span></td>
+                    <td>
+                        <button type="button" class="btn btn-sm" data-edit="${c.id}">Edit</button>
+                        <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" data-del="${c.id}">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openEdit(+btn.dataset.edit)));
+            tbody.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => removeCenter(+btn.dataset.del)));
+        }
+
+        async function openEdit(id) {
+            const res = await fetch(api + '/evacuation.php?action=get&id=' + id, { credentials: 'include' });
+            const data = await res.json();
+            const c = data.center;
+            if (!data.success || !c) return;
+            document.getElementById('editId').value = c.id;
+            document.getElementById('editBarangay').value = c.barangay_id;
+            document.getElementById('editName').value = c.center_name;
+            document.getElementById('editAddress').value = c.address || '';
+            document.getElementById('editCap').value = c.capacity;
+            document.getElementById('editOcc').value = c.current_occupancy;
+            document.getElementById('editContact').value = c.contact_person || '';
+            document.getElementById('editPhone').value = c.contact_phone || '';
+            document.getElementById('editFac').value = c.facilities || '';
+            document.getElementById('editStatus').value = c.status;
+            document.getElementById('editLat').value = c.latitude || '';
+            document.getElementById('editLon').value = c.longitude || '';
+            document.getElementById('editModal').classList.add('open');
+        }
+
+        async function removeCenter(id) {
+            if (!confirm('Delete this evacuation center?')) return;
+            const res = await fetch(api + '/evacuation.php?action=delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const j = await res.json();
+            if (j.success) loadCenters();
+            else alert(j.message || 'Delete failed');
+        }
+
+        document.getElementById('ecForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                barangay_id: +document.getElementById('ecBarangay').value,
+                center_name: document.getElementById('ecName').value,
+                address: document.getElementById('ecAddress').value,
+                capacity: +document.getElementById('ecCap').value,
+                current_occupancy: +document.getElementById('ecOcc').value,
+                contact_person: document.getElementById('ecContact').value,
+                contact_phone: document.getElementById('ecPhone').value,
+                facilities: document.getElementById('ecFac').value,
+                status: document.getElementById('ecStatus').value,
+                latitude: document.getElementById('ecLat').value || null,
+                longitude: document.getElementById('ecLon').value || null
+            };
+            const res = await fetch(api + '/evacuation.php?action=create', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) {
+                e.target.reset();
+                loadCenters();
+            } else alert(j.message || 'Save failed');
+        });
+
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const body = {
+                id: +document.getElementById('editId').value,
+                barangay_id: +document.getElementById('editBarangay').value,
+                center_name: document.getElementById('editName').value,
+                address: document.getElementById('editAddress').value,
+                capacity: +document.getElementById('editCap').value,
+                current_occupancy: +document.getElementById('editOcc').value,
+                contact_person: document.getElementById('editContact').value,
+                contact_phone: document.getElementById('editPhone').value,
+                facilities: document.getElementById('editFac').value,
+                status: document.getElementById('editStatus').value,
+                latitude: document.getElementById('editLat').value || null,
+                longitude: document.getElementById('editLon').value || null
+            };
+            const res = await fetch(api + '/evacuation.php?action=update', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) {
+                document.getElementById('editModal').classList.remove('open');
+                loadCenters();
+            } else alert(j.message || 'Update failed');
+        });
+
+        document.getElementById('cancelEditBtn').addEventListener('click', () => document.getElementById('editModal').classList.remove('open'));
+        document.getElementById('openAddBtn').addEventListener('click', () => document.getElementById('ecName').focus());
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            await loadBarangaySelects();
+            loadCenters();
+        });
+    </script>
+</body>
+</html>

@@ -188,7 +188,8 @@ class PriorityCalculator {
                              WHERE barangay_id = ?";
 
             $stmt = $this->conn->prepare($update_query);
-            $stmt->bind_param('diiisii', 
+            $stmt->bind_param(
+                'diidsii',
                 $priority_data['priority_score'],
                 $priority_data['affected_families_total'],
                 $priority_data['damaged_houses_total'],
@@ -205,7 +206,8 @@ class PriorityCalculator {
                              VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = $this->conn->prepare($insert_query);
-            $stmt->bind_param('idiiisi', 
+            $stmt->bind_param(
+                'idiidsi',
                 $priority_data['barangay_id'],
                 $priority_data['priority_score'],
                 $priority_data['affected_families_total'],

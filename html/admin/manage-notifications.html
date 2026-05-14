@@ -15,22 +15,7 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Command Center
-                </a></li>
-                <li><a href="manage-notifications.html" class="active">
-                    <svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    Notifications
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
@@ -38,7 +23,7 @@
                     <h2 style="font-size: 20px;">Manage Notifications</h2>
                     <p style="font-size: 13px; color: var(--text-subtle);">System-wide monitoring by recipient or email...</p>
                 </div>
-                <button class="btn btn-primary">
+                <button type="button" class="btn btn-primary" id="sendAlertBtn">
                     <svg class="icon" style="width: 14px; height: 14px;"><path d="M12 5v14M5 12h14"></path></svg>
                     Send New Alert
                 </button>
@@ -46,19 +31,19 @@
 
             <div class="metrics-grid animate-fade-in">
                 <div class="metric-card" style="border-left-color: var(--primary);">
-                    <div class="metric-label">Total Emails Sent</div>
-                    <div class="metric-value">14,284</div>
-                    <div style="font-size: 11px; color: var(--success); font-weight: 600;">99.8% Success Rate</div>
+                    <div class="metric-label">Total notifications</div>
+                    <div class="metric-value" id="metricTotal">—</div>
+                    <div style="font-size: 11px; color: var(--text-subtle); font-weight: 600;">Stored in ReliefLink</div>
                 </div>
                 <div class="metric-card" style="border-left-color: var(--warning);">
-                    <div class="metric-label">Failed Notifications</div>
-                    <div class="metric-value">243</div>
-                    <div style="font-size: 11px; color: var(--danger); font-weight: 600;">Retry automated</div>
+                    <div class="metric-label">Unread (all users)</div>
+                    <div class="metric-value" id="metricUnread">—</div>
+                    <div style="font-size: 11px; color: var(--warning); font-weight: 600;">Across accounts</div>
                 </div>
                 <div class="metric-card" style="border-left-color: var(--info);">
-                    <div class="metric-label">Delivery Rate</div>
-                    <div class="metric-value">98.3%</div>
-                    <div style="font-size: 11px; color: var(--text-subtle);">Sector Node: ALPHA</div>
+                    <div class="metric-label">Barangay officials</div>
+                    <div class="metric-value" id="metricRecipients">—</div>
+                    <div style="font-size: 11px; color: var(--text-subtle);">Daet — can receive alerts</div>
                 </div>
             </div>
 
@@ -66,36 +51,7 @@
                 <div class="card">
                     <div class="card-title">Transmission Logs</div>
                     <div id="notificationList">
-                        <!-- Populated by JS -->
-                        <div class="notif-card">
-                            <div class="notif-category-icon" style="color: var(--danger);"><svg class="icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></div>
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <div style="font-weight: 700;">Critical Weather Alert: Flood Warning</div>
-                                    <span style="font-size: 11px; color: var(--text-subtle);">2 mins ago</span>
-                                </div>
-                                <div style="font-size: 12px; color: var(--text-subtle); margin: 4px 0;">PAGASA has updated the rainfall warning to RED. Evacuation centers in Zone 4 should begin priority intake immediately.</div>
-                                <div style="display: flex; gap: 12px; margin-top: 8px;">
-                                    <span class="badge badge-danger">Emergency</span>
-                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-main);">RECIPIENTS: 13,115</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="notif-card">
-                            <div class="notif-category-icon" style="color: var(--primary);"><svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg></div>
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <div style="font-weight: 700;">Relief Batch Dispatched</div>
-                                    <span style="font-size: 11px; color: var(--text-subtle);">1 hour ago</span>
-                                </div>
-                                <div style="font-size: 12px; color: var(--text-subtle); margin: 4px 0;">Batch #8829 containing rice, canned goods, and medical kits has been dispatched to Santa Maria.</div>
-                                <div style="display: flex; gap: 12px; margin-top: 8px;">
-                                    <span class="badge badge-info">Relief</span>
-                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-main);">SENT TO EMAIL</span>
-                                </div>
-                            </div>
-                        </div>
+                        <p style="padding:24px;color:var(--text-subtle);">Loading…</p>
                     </div>
                 </div>
 
@@ -137,19 +93,135 @@
         </main>
     </div>
 
+    <div id="sendModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:24px;">
+        <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;">
+            <h3 style="margin-bottom:16px;">Send notification</h3>
+            <div class="form-group">
+                <label class="form-label">Recipient (barangay official)</label>
+                <select id="recvUser" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <input type="text" id="recvType" class="form-control" value="admin_broadcast" placeholder="e.g. admin_broadcast">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Message</label>
+                <textarea id="recvMsg" class="form-control" rows="4" placeholder="Short message shown in their inbox"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px;">
+                <button type="button" class="btn btn-primary" id="confirmSendBtn">Send</button>
+                <button type="button" class="btn" style="border:1px solid var(--border);" id="cancelSendBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/relief-sidebar.js"></script>
     <script>
-        async function loadNotifications() {
-            try {
-                const response = await fetch('../../php/api/notifications.php?action=list_all');
-                const data = await response.json();
-                if (data.success && data.notifications.length > 0) {
-                    const list = document.getElementById('notificationList');
-                    // We'll keep the static examples as they match the high-end look in the PDF
-                    // but we could append real data here.
-                }
-            } catch (error) { console.error('Notifications error:', error); }
+        const api = '../../php/api';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            await loadRecipients();
+            loadNotifications();
+            document.getElementById('sendAlertBtn').addEventListener('click', () => {
+                document.getElementById('sendModal').style.display = 'flex';
+            });
+            document.getElementById('cancelSendBtn').addEventListener('click', () => {
+                document.getElementById('sendModal').style.display = 'none';
+            });
+            document.getElementById('confirmSendBtn').addEventListener('click', sendNotification);
+        });
+
+        async function loadRecipients() {
+            const res = await fetch(api + '/notifications.php?action=list_recipients', { credentials: 'include' });
+            const data = await res.json();
+            const sel = document.getElementById('recvUser');
+            if (!data.success || !data.recipients) {
+                sel.innerHTML = '<option value="">No officials found</option>';
+                return;
+            }
+            document.getElementById('metricRecipients').textContent = data.recipients.length;
+            sel.innerHTML = data.recipients.map(r =>
+                `<option value="${r.id}">${r.full_name} (${r.barangay_name || '—'})</option>`
+            ).join('');
         }
-        loadNotifications();
+
+        async function sendNotification() {
+            const user_id = +document.getElementById('recvUser').value;
+            const body = {
+                user_id,
+                notification_type: document.getElementById('recvType').value || 'admin_broadcast',
+                message: document.getElementById('recvMsg').value
+            };
+            if (!body.message.trim()) { alert('Enter a message'); return; }
+            const res = await fetch(api + '/notifications.php?action=create', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) {
+                document.getElementById('sendModal').style.display = 'none';
+                document.getElementById('recvMsg').value = '';
+                loadNotifications();
+            } else alert(j.message || 'Send failed');
+        }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notificationList');
+            try {
+                const response = await fetch(api + '/notifications.php?action=list_all', { credentials: 'include' });
+                const data = await response.json();
+                if (!data.success || !Array.isArray(data.notifications)) {
+                    list.innerHTML = '<p style="padding:24px;color:var(--text-subtle);">Could not load.</p>';
+                    return;
+                }
+                const rows = data.notifications;
+                document.getElementById('metricTotal').textContent = rows.length;
+                const unread = rows.filter(n => !parseInt(n.is_read, 10)).length;
+                document.getElementById('metricUnread').textContent = unread;
+
+                if (rows.length === 0) {
+                    list.innerHTML = '<p style="padding:24px;color:var(--text-subtle);">No notifications yet.</p>';
+                    return;
+                }
+                list.innerHTML = rows.map(n => {
+                    const when = n.created_at ? new Date(n.created_at.replace(' ', 'T')).toLocaleString() : '';
+                    return `
+                    <div class="notif-card">
+                        <div class="notif-category-icon" style="color: var(--primary);"><svg class="icon"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <div style="font-weight: 700;">${(n.notification_type || '').replace(/</g, '')}</div>
+                                <span style="font-size: 11px; color: var(--text-subtle);">${when}</span>
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-subtle); margin: 4px 0;">To: <strong>${n.recipient_name || ''}</strong> (${n.recipient_username || ''})</div>
+                            <div style="font-size: 13px; margin: 6px 0;">${(n.message || '').replace(/</g, '&lt;')}</div>
+                            <div style="display: flex; gap: 12px; margin-top: 8px; align-items: center;">
+                                <span class="badge ${parseInt(n.is_read, 10) ? 'badge-success' : 'badge-warning'}">${parseInt(n.is_read, 10) ? 'Read' : 'Unread'}</span>
+                                <button type="button" class="btn btn-sm" style="border:1px solid var(--border);" onclick="adminDeleteNotif(${n.id})">Delete</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (error) {
+                console.error('Notifications error:', error);
+                list.innerHTML = '<p style="padding:24px;color:var(--danger);">Load error.</p>';
+            }
+        }
+
+        async function adminDeleteNotif(id) {
+            if (!confirm('Delete this notification?')) return;
+            await fetch(api + '/notifications.php?action=delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notification_id: id })
+            });
+            loadNotifications();
+        }
     </script>
 </body>
 </html>

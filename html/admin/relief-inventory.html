@@ -17,40 +17,13 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Command Center
-                </a></li>
-                <li><a href="review-reports.html">
-                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                    Disaster Reports
-                </a></li>
-                <li><a href="prioritize-barangays.html">
-                    <svg class="icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    Priority Ranking
-                </a></li>
-                <li><a href="relief-inventory.html" class="active">
-                    <svg class="icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    Resource Inventory
-                </a></li>
-                <li><a href="distribution.html">
-                    <svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg>
-                    Distribution Management
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
                 <div>
                     <h2 style="font-size: 20px;">Inventory Management</h2>
-                    <p style="font-size: 13px; color: var(--text-subtle);">Centralized stock tracking for MDRRMO Sector Alpha-1</p>
+                    <p style="font-size: 13px; color: var(--text-subtle);">Centralized stock — MDRRMO Daet, Camarines Norte</p>
                 </div>
                 <div style="display: flex; gap: 12px;">
                     <button class="btn" style="border: 1px solid var(--border); background: #fff;">Search Resources...</button>
@@ -153,12 +126,25 @@
                         <div class="card-title">Quick Add Item</div>
                         <form id="addItemForm">
                             <div class="form-group">
+                                <label class="form-label">Category</label>
+                                <select id="itemCategory" class="form-control">
+                                    <option value="Food">Food</option>
+                                    <option value="Water">Water</option>
+                                    <option value="NFIs">NFIs</option>
+                                    <option value="General">General</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label">Item Name</label>
                                 <input type="text" id="itemName" class="form-control" placeholder="e.g. Bottled Water 1L">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Quantity</label>
                                 <input type="number" id="itemQty" class="form-control" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Unit</label>
+                                <input type="text" id="itemUnit" class="form-control" placeholder="sack, bottle, kit…" value="unit">
                             </div>
                             <button type="submit" class="btn btn-primary btn-block">Add to Registry</button>
                         </form>
@@ -168,34 +154,82 @@
         </main>
     </div>
 
+    <div id="invModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:24px;">
+        <div style="background:#fff;border-radius:12px;max-width:440px;width:100%;padding:24px;">
+            <h3 style="margin-bottom:16px;">Update item</h3>
+            <input type="hidden" id="editInvId">
+            <div class="form-group"><label class="form-label">Name</label><input type="text" id="editInvName" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Category</label><input type="text" id="editInvCat" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="editInvQty" class="form-control" min="0"></div>
+            <div class="form-group"><label class="form-label">Unit</label><input type="text" id="editInvUnit" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Cost / unit (optional)</label><input type="number" id="editInvCost" class="form-control" min="0" step="0.01"></div>
+            <div class="form-group"><label class="form-label">Description</label><textarea id="editInvDesc" class="form-control" rows="2"></textarea></div>
+            <div style="display:flex;gap:12px;">
+                <button type="button" class="btn btn-primary" id="saveInvBtn">Save</button>
+                <button type="button" class="btn" style="border:1px solid var(--border);" id="cancelInvBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/relief-sidebar.js"></script>
     <script>
+        const api = '../../php/api';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            loadSummary();
+            loadInventory();
+            document.getElementById('saveInvBtn').addEventListener('click', saveInventoryEdit);
+            document.getElementById('cancelInvBtn').addEventListener('click', () => { document.getElementById('invModal').style.display = 'none'; });
+        });
+
+        async function loadSummary() {
+            try {
+                const res = await fetch(api + '/relief.php?action=inventory_summary', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success || !data.summary) return;
+                let total = 0;
+                data.summary.forEach(s => { total += parseInt(s.total_quantity, 10) || 0; });
+                const el = document.getElementById('totalUnits');
+                if (el) el.textContent = total.toLocaleString();
+                const low = data.summary.filter(s => (parseInt(s.total_quantity, 10) || 0) < 50).length;
+                const lc = document.getElementById('lowStockCount');
+                if (lc) lc.textContent = String(low).padStart(2, '0');
+            } catch (e) { console.error(e); }
+        }
+
         async function loadInventory() {
             try {
-                const response = await fetch('../../php/api/relief.php?action=inventory_summary');
+                const response = await fetch(api + '/relief.php?action=inventory_list', { credentials: 'include' });
                 const data = await response.json();
-                if (data.success) {
+                if (data.success && data.inventory) {
                     const tbody = document.getElementById('inventoryTableBody');
-                    tbody.innerHTML = data.summary.map(item => {
-                        const stockPercent = Math.min((parseInt(item.quantity_available) / 1000) * 100, 100);
+                    tbody.innerHTML = data.inventory.map(item => {
+                        const q = parseInt(item.quantity, 10) || 0;
+                        const stockPercent = Math.min((q / 1000) * 100, 100);
                         const status = stockPercent > 50 ? 'Stable' : (stockPercent > 20 ? 'Moderate' : 'Critical');
                         const badgeClass = status === 'Stable' ? 'success' : (status === 'Moderate' ? 'warning' : 'danger');
-                        
+                        const cat = item.category || 'General';
                         return `
                             <tr>
                                 <td>
-                                    <div style="font-weight: 600;">${item.item_name}</div>
-                                    <div class="sku-tag">SKU: ${item.item_name.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*1000)}</div>
+                                    <div style="font-weight: 600;">${item.item_name.replace(/</g, '')}</div>
+                                    <div class="sku-tag">ID: ${item.id}</div>
                                 </td>
-                                <td><span class="badge badge-info">GENERAL</span></td>
+                                <td><span class="badge badge-info">${cat}</span></td>
                                 <td>
                                     <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
-                                        <span>${item.quantity_available} Units</span>
+                                        <span>${q} ${item.unit_of_measure || 'units'}</span>
                                         <span style="color: var(--text-subtle);">${Math.round(stockPercent)}%</span>
                                     </div>
                                     <div class="stock-progress"><div style="width: ${stockPercent}%; height: 100%; background: var(--${badgeClass});"></div></div>
                                 </td>
                                 <td><span class="badge badge-${badgeClass}">${status}</span></td>
-                                <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Update</button></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="openInvEdit(${item.id})">Edit</button>
+                                    <button type="button" class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="deleteInv(${item.id})">Delete</button>
+                                </td>
                             </tr>
                         `;
                     }).join('');
@@ -203,27 +237,91 @@
             } catch (error) { console.error('Inventory error:', error); }
         }
 
+        async function openInvEdit(id) {
+            const res = await fetch(api + '/relief.php?action=inventory_get&item_id=' + id, { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success || !data.item) return;
+            const it = data.item;
+            document.getElementById('editInvId').value = it.id;
+            document.getElementById('editInvName').value = it.item_name;
+            document.getElementById('editInvCat').value = it.category;
+            document.getElementById('editInvQty').value = it.quantity;
+            document.getElementById('editInvUnit').value = it.unit_of_measure || '';
+            document.getElementById('editInvCost').value = it.cost_per_unit != null ? it.cost_per_unit : '';
+            document.getElementById('editInvDesc').value = it.description || '';
+            document.getElementById('invModal').style.display = 'flex';
+        }
+
+        async function saveInventoryEdit() {
+            const body = {
+                item_id: +document.getElementById('editInvId').value,
+                item_name: document.getElementById('editInvName').value,
+                category: document.getElementById('editInvCat').value,
+                quantity: +document.getElementById('editInvQty').value,
+                unit_of_measure: document.getElementById('editInvUnit').value,
+                cost_per_unit: parseFloat(document.getElementById('editInvCost').value) || 0,
+                description: document.getElementById('editInvDesc').value
+            };
+            const res = await fetch(api + '/relief.php?action=inventory_update', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) {
+                document.getElementById('invModal').style.display = 'none';
+                loadSummary();
+                loadInventory();
+            } else alert(j.message || 'Update failed');
+        }
+
+        async function deleteInv(id) {
+            if (!confirm('Delete this inventory row? Only allowed if it has no distribution history.')) return;
+            const res = await fetch(api + '/relief.php?action=inventory_delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_id: id })
+            });
+            const j = await res.json();
+            if (j.success) {
+                loadSummary();
+                loadInventory();
+            } else alert(j.message || 'Delete failed');
+        }
+
         document.getElementById('addItemForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const itemName = document.getElementById('itemName').value;
             const quantity = document.getElementById('itemQty').value;
-            
+            const category = document.getElementById('itemCategory').value;
+            const unit = document.getElementById('itemUnit').value || 'unit';
+
             try {
-                const response = await fetch('../../php/api/relief.php?action=add_item', {
+                const response = await fetch(api + '/relief.php?action=inventory_add', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ item_name: itemName, quantity: quantity })
+                    body: JSON.stringify({
+                        item_name: itemName,
+                        category: category,
+                        quantity: parseInt(quantity, 10) || 0,
+                        unit_of_measure: unit,
+                        cost_per_unit: 0,
+                        description: ''
+                    })
                 });
                 const data = await response.json();
                 if (data.success) {
                     alert('Item added to global registry.');
+                    loadSummary();
                     loadInventory();
                     e.target.reset();
-                }
+                    document.getElementById('itemUnit').value = 'unit';
+                } else alert(data.message || 'Error');
             } catch (error) { alert('Error updating inventory.'); }
         });
-
-        loadInventory();
     </script>
 </body>
 </html>

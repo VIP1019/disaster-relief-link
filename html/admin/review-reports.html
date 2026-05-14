@@ -15,22 +15,7 @@
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-box">R</div>
-                <div class="sidebar-brand">ReliefLink</div>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="dashboard.html">
-                    <svg class="icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    Command Center
-                </a></li>
-                <li><a href="review-reports.html" class="active">
-                    <svg class="icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    Disaster Reports
-                </a></li>
-            </ul>
-        </aside>
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
 
         <main class="main-content">
             <header class="top-nav">
@@ -86,19 +71,26 @@
         </main>
     </div>
 
+    <script src="../js/relief-sidebar.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user || user.user_type !== 'admin') return;
+            loadReports();
+        });
+
         async function loadReports() {
             try {
-                const response = await fetch('../../php/api/reports.php?action=list_all');
+                const response = await fetch('../../php/api/reports.php?action=list_all', { credentials: 'include' });
                 const data = await response.json();
                 if (data.success) {
                     const tbody = document.getElementById('reportsTableBody');
                     tbody.innerHTML = data.reports.map(r => `
                         <tr>
                             <td><span class="report-id">REP-2024-${r.id.toString().padStart(4, '0')}</span></td>
-                            <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Sector Node: 4-A</div></td>
+                            <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Daet, Camarines Norte</div></td>
                             <td><span class="badge badge-info">${r.disaster_type.toUpperCase()}</span></td>
-                            <td><span class="badge badge-${r.status === 'pending' ? 'warning' : 'success'}">${r.status.replace('_', ' ').toUpperCase()}</span></td>
+                            <td><span class="badge badge-${r.status === 'submitted' ? 'warning' : 'success'}">${r.status.replace('_', ' ').toUpperCase()}</span></td>
                             <td>
                                 <div class="assessment-badge">
                                     <div class="dot" style="background: ${r.severity_level === 'critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
@@ -107,7 +99,7 @@
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-primary" onclick="approveReport(${r.id})">Verify</button>
-                                <button class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;">Reject</button>
+                                <button class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="rejectReport(${r.id})">Return to barangay</button>
                             </td>
                         </tr>
                     `).join('');
@@ -115,13 +107,31 @@
             } catch (error) { console.error('Reports error:', error); }
         }
 
+        async function rejectReport(id) {
+            if (!confirm('Return this report to submitted status for the barangay to revise?')) return;
+            try {
+                const response = await fetch('../../php/api/reports.php?action=update_status', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_id: id, status: 'submitted' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Report returned to submitted status.');
+                    loadReports();
+                } else alert(data.message || 'Update failed');
+            } catch (error) { alert('Request failed.'); }
+        }
+
         async function approveReport(id) {
             if (!confirm('Verify and approve this disaster report?')) return;
             try {
                 const response = await fetch('../../php/api/reports.php?action=update_status', {
-                    method: 'POST',
+                    method: 'PUT',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, status: 'approved' })
+                    body: JSON.stringify({ report_id: id, status: 'reviewed' })
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -130,8 +140,6 @@
                 }
             } catch (error) { alert('Verification failed.'); }
         }
-
-        loadReports();
     </script>
 </body>
 </html>

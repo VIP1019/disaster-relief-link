@@ -4,24 +4,25 @@ A comprehensive web-based integrated system for managing disaster relief distrib
 
 ## Project Overview
 
-ReliefLink addresses inefficiencies in manual disaster response by automating the collection, processing, and analysis of disaster-related data. The system connects municipal databases with real-time weather API data to enable data-driven decision-making in relief distribution.
+ReliefLink addresses inefficiencies in manual disaster response by automating the collection, processing, and analysis of disaster-related data for the **Municipality of Daet, Camarines Norte**. The system connects municipal databases with real-time weather API data to enable data-driven decision-making in relief distribution.
 
 ### Key Features
 
 #### User Module (Barangay Officials)
 - **User Registration & Authentication**: Secure login and registration for barangay officials
 - **Disaster Report Submission**: Submit reports including affected families, damaged houses, and disaster type
-- **Report Status Tracking**: View submitted reports and their current status
-- **Notifications**: Receive real-time updates on relief distribution and report status
+- **Report Status Tracking**: View submitted reports; **edit or delete** reports while still in **submitted** status
+- **Notifications**: **List, mark read, mark all read, and delete** in-app notifications
 
 #### Administrative Module (MDRRMO)
 - **Dashboard**: Comprehensive overview of active disaster responses
 - **Report Review & Processing**: Review disaster reports and update their status
 - **Automatic Prioritization**: Intelligent barangay ranking based on severity and weather conditions
-- **Relief Inventory Management**: Track and manage available relief supplies
+- **Relief Inventory Management**: Track, **add, edit, and delete** relief supplies (delete only when no distribution history)
 - **Distribution Management**: Record and monitor relief distribution to barangays
+- **Evacuation centers**: Maintain **shelter / evacuation site** records per barangay (CRUD)
 - **Weather API Monitoring**: Real-time weather data integration and monitoring
-- **Notification Management**: Send targeted notifications to barangay officials
+- **Notification Management**: **Send, list, and remove** targeted notifications to barangay officials
 
 ## Technical Architecture
 
@@ -29,15 +30,16 @@ ReliefLink addresses inefficiencies in manual disaster response by automating th
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Backend**: PHP 8.x
 - **Database**: MySQL (Relational Database)
-- **External API**: OpenWeather API for real-time weather data
+- **External API**: [Open-Meteo](https://open-meteo.com/) Forecast API for current weather (no API key for typical non-commercial use)
 - **Data Format**: JSON / RESTful API
 
 ### System Components
 
 #### 1. Database Schema
-The system uses 8 main tables:
+The system uses 10 main tables:
 - `users` - User accounts (barangay officials and admin)
 - `barangays` - Barangay information with coordinates
+- `evacuation_centers` - Shelters / evacuation sites per barangay (capacity, occupancy, contacts)
 - `disaster_reports` - Disaster event reports with impact data
 - `relief_inventory` - Available relief supplies and quantities
 - `relief_distributions` - Distribution records of relief goods
@@ -50,18 +52,20 @@ The system uses 8 main tables:
 - **Database** - Database connection management
 - **Auth** - User authentication and session management
 - **DisasterReport** - Disaster report CRUD operations
-- **WeatherAPI** - OpenWeather API integration
+- **WeatherAPI** - [Open-Meteo](https://open-meteo.com/) forecast / current conditions and `weather_api_logs`
 - **PriorityCalculator** - Barangay prioritization algorithm
 - **ReliefManagement** - Inventory and distribution management
+- **EvacuationCenter** - Evacuation / shelter site records
 - **Notification** - Notification system
 
 #### 3. API Endpoints
-- `/php/api/auth.php` - Authentication (login, register, logout)
-- `/php/api/reports.php` - Disaster reports management
-- `/php/api/relief.php` - Inventory and distribution management
+- `/php/api/auth.php` - Authentication (login, register, logout, session check)
+- `/php/api/reports.php` - Disaster reports (submit, list, get, **update_own**, **delete_own**, admin list/status)
+- `/php/api/relief.php` - Inventory (**add/update/delete**), **barangays_list**, distributions, statistics
 - `/php/api/priority.php` - Barangay priority calculation
 - `/php/api/weather.php` - Weather data retrieval
-- `/php/api/notifications.php` - Notification management
+- `/php/api/notifications.php` - Notifications (list, create, mark read, delete, **list_recipients** for admins)
+- `/php/api/evacuation.php` - **Evacuation centers / shelters** (list, get, create, update, delete — admin for writes)
 
 ## Installation & Setup
 
@@ -69,36 +73,40 @@ The system uses 8 main tables:
 - PHP 8.x with MySQLi extension
 - MySQL 5.7 or higher
 - Web server (Apache, Nginx)
-- OpenWeather API key
+- PHP cURL extension **recommended** (HTTPS to `api.open-meteo.com`; `file_get_contents` is used as fallback)
 
 ### Step 1: Database Setup
-1. Create a new MySQL database named `relieflink`
-2. Import the database schema:
-   ```sql
-   mysql -u root -p relieflink < db/schema.sql
-   ```
-3. Update database credentials in `php/config/Database.php`
+1. Import the database schema (creates DB `relieflink` if missing, then tables + seed):
+   - **phpMyAdmin:** open the **SQL** tab (from the home/server screen is fine), paste the full contents of `db/schema.sql`, click **Go**.
+   - **Command line:** `mysql -u root -p < db/schema.sql` (from the project folder, adjust user if needed)
+2. Update database credentials in `php/config/Database.php`
+3. For a **table-by-table list** (database name, column names, types, keys), see `db/DATA_DICTIONARY.md`.
 
-### Step 2: Configure OpenWeather API
-1. Get an API key from [OpenWeatherMap](https://openweathermap.org/api)
-2. Update the API key in `php/classes/WeatherAPI.php`:
-   ```php
-   private $api_key = 'YOUR_OPENWEATHER_API_KEY';
-   ```
+### Step 2: Weather (Open-Meteo)
+1. **No API key is required** for normal use: ReliefLink calls the public [Open-Meteo Forecast API](https://open-meteo.com/) using each barangay’s latitude/longitude from the database.
+2. Your server must allow **outbound HTTPS** to `api.open-meteo.com` (firewall / hosting policy).
+3. In **Weather Monitoring** (admin), click **Force API Sync** to refresh all barangays and write rows to `weather_api_logs`.
+4. **Optional:** self-hosted or alternate Open-Meteo endpoint — set environment variable `OPEN_METEO_FORECAST_URL` to the base forecast URL (e.g. `https://api.open-meteo.com/v1/forecast`), or add `open_meteo_forecast_url` in `php/config/weather.local.php` (see `weather.local.example.php`). Respect [Open-Meteo terms](https://open-meteo.com/) and cite the data source in academic work.
 
 ### Step 3: Web Server Setup
 1. Place project files in your web server's document root
 2. Ensure PHP can read/write to the project directory
 3. Configure web server to serve the `html` folder as the public directory
 
-### Step 4: Initial Setup
-1. Navigate to `http://your-domain/login.html`
-2. Register a new account (creates a barangay official account)
-3. Login with admin credentials to create admin account in database:
-   ```sql
-   INSERT INTO users (username, email, password_hash, full_name, barangay_name, user_type, is_active)
-   VALUES ('admin', 'admin@relieflink.com', '$2y$10$...', 'Admin User', 'MDRRMO', 'admin', 1);
-   ```
+### Step 4: Demonstration test accounts (included in `db/schema.sql`)
+
+After importing `db/schema.sql`, you can log in immediately with:
+
+| Role | Username | Password | Barangay (match `barangays.name` when registering) |
+|------|----------|----------|--------------------------------------------------------|
+| MDRRMO (admin) | `admin` | `Demo@2026` | — |
+| Barangay official | `brgyuser` | `Demo@2026` | `Poblacion` |
+| Barangay official | `captain_cb` | `Demo@2026` | `Camambugan` |
+| Barangay official | `captain_bg` | `Demo@2026` | `Bagasbas` |
+
+The seed data includes barangays **Poblacion**, **Camambugan**, and **Bagasbas** (Daet), sample disaster reports, relief inventory, one distribution record, and notifications. **Barangay officials should register using a `barangay_name` that exactly matches a row in `barangays.name`** (e.g. `Poblacion`) so report submission can resolve `barangay_id` automatically.
+
+If you prefer to create the admin manually instead of using the seed file, you can still use `password_hash()` in PHP to generate a new hash and `INSERT` into `users`.
 
 ## Prioritization Algorithm
 
@@ -122,18 +130,17 @@ Priority Score = (Affected Families × 0.4) + (Damaged Houses × 0.3) +
 
 ## API Integration Details
 
-### OpenWeather API
-The system integrates with OpenWeather API to:
-1. Fetch real-time weather conditions for each barangay
-2. Calculate weather impact scores for prioritization
-3. Log historical weather data for disaster analysis
-4. Provide weather-aware decision support
+### Open-Meteo API
+The system integrates with the [Open-Meteo](https://open-meteo.com/) Forecast API to:
+1. Fetch **current** temperature, humidity, wind (m/s), and WMO weather code at each barangay coordinate
+2. Support weather impact inputs for prioritization (via stored conditions and logs)
+3. Log JSON responses in `weather_api_logs` for auditing and the admin weather table
 
-**Data Retrieved**:
-- Temperature (°C)
-- Humidity (%)
-- Wind Speed (m/s)
-- Weather Condition (Clear, Rain, Thunderstorm, etc.)
+**Data retrieved (current)**:
+- Temperature (°C, `temperature_2m`)
+- Humidity (% , `relative_humidity_2m`)
+- Wind speed (m/s, `wind_speed_10m`)
+- Condition label derived from WMO `weather_code` (e.g. Clear, Rain, Thunderstorm)
 
 ## User Workflows
 
@@ -158,7 +165,8 @@ The system integrates with OpenWeather API to:
 ```
 /vercel/share/v0-project/
 ├── db/
-│   └── schema.sql                 # Database schema
+│   ├── schema.sql                 # Database schema + seed data
+│   └── DATA_DICTIONARY.md         # Table & column reference (for docs / defense)
 ├── php/
 │   ├── config/
 │   │   └── Database.php          # Database connection
@@ -175,7 +183,8 @@ The system integrates with OpenWeather API to:
 │       ├── relief.php            # Relief endpoints
 │       ├── priority.php          # Priority endpoints
 │       ├── weather.php           # Weather endpoints
-│       └── notifications.php     # Notification endpoints
+│       ├── notifications.php     # Notification endpoints
+│       └── evacuation.php        # Evacuation / shelter CRUD
 ├── html/
 │   ├── login.html                # Login page
 │   ├── register.html             # Registration page
@@ -191,7 +200,8 @@ The system integrates with OpenWeather API to:
 │       ├── relief-inventory.html # Inventory management
 │       ├── distribution.html     # Distribution recording
 │       ├── weather-monitoring.html # Weather monitoring
-│       └── manage-notifications.html # Notification management
+│       ├── manage-notifications.html # Notification management
+│       └── evacuation-centers.html # Evacuation / shelter registry
 ├── css/
 │   └── styles.css                # Global styles
 └── README.md                     # This file

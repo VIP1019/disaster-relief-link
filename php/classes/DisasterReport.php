@@ -19,8 +19,12 @@ class DisasterReport {
      * Submit a new disaster report
      */
     public function submitReport($user_id, $barangay_id, $disaster_type, $affected_families, $damaged_houses, $description, $injured_count = 0, $death_count = 0) {
-        // Validate inputs
-        if (empty($user_id) || empty($barangay_id) || empty($disaster_type) || empty($affected_families) || empty($damaged_houses)) {
+        $affected_families = (int) $affected_families;
+        $damaged_houses = (int) $damaged_houses;
+        $injured_count = (int) $injured_count;
+        $death_count = (int) $death_count;
+        // Note: empty(0) is true in PHP — use numeric checks so 0 affected / 0 damaged is allowed.
+        if (empty($user_id) || empty($barangay_id) || $disaster_type === '' || $affected_families < 0 || $damaged_houses < 0) {
             return ['success' => false, 'message' => 'All required fields must be filled'];
         }
 
@@ -41,10 +45,22 @@ class DisasterReport {
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->conn->prepare($insert_query);
-        $stmt->bind_param('iisiiissdii s', 
-            $user_id, $barangay_id, $disaster_type, $affected_families, $damaged_houses, 
-            $injured_count, $death_count, $description, $temperature, $humidity, $wind_speed, 
-            $weather_condition, $severity_level
+        // Column order: description, weather_condition, temperature, humidity, wind_speed, severity_level
+        $stmt->bind_param(
+            'iisiiiissdids',
+            $user_id,
+            $barangay_id,
+            $disaster_type,
+            $affected_families,
+            $damaged_houses,
+            $injured_count,
+            $death_count,
+            $description,
+            $weather_condition,
+            $temperature,
+            $humidity,
+            $wind_speed,
+            $severity_level
         );
 
         if ($stmt->execute()) {
@@ -52,6 +68,21 @@ class DisasterReport {
         } else {
             return ['success' => false, 'message' => 'Report submission failed: ' . $this->conn->error];
         }
+    }
+
+    /**
+     * Resolve barangay id from the logged-in user's barangay_name (must match barangays.name).
+     */
+    public function getBarangayIdForUser($user_id) {
+        $query = "SELECT b.id FROM barangays b
+                  INNER JOIN users u ON LOWER(TRIM(u.barangay_name)) = LOWER(TRIM(b.name))
+                  WHERE u.id = ?
+                  LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? (int) $row['id'] : null;
     }
 
     /**
@@ -137,6 +168,93 @@ class DisasterReport {
         } else {
             return ['success' => false, 'message' => 'Update failed'];
         }
+    }
+
+    /**
+     * Barangay official: update own report while still submitted.
+     */
+    public function updateOwnReport($user_id, $report_id, $data) {
+        $rid = (int) $report_id;
+        $uid = (int) $user_id;
+        if ($rid <= 0 || $uid <= 0) {
+            return ['success' => false, 'message' => 'Invalid report'];
+        }
+
+        $check = $this->conn->prepare("SELECT id, status FROM {$this->table} WHERE id = ? AND user_id = ? LIMIT 1");
+        $check->bind_param('ii', $rid, $uid);
+        $check->execute();
+        $row = $check->get_result()->fetch_assoc();
+        if (!$row || $row['status'] !== 'submitted') {
+            return ['success' => false, 'message' => 'Report not found or cannot be edited (only submitted reports can be updated).'];
+        }
+
+        $disaster_type = trim((string) ($data['disaster_type'] ?? ''));
+        $affected_families = (int) ($data['affected_families'] ?? 0);
+        $damaged_houses = (int) ($data['damaged_houses'] ?? 0);
+        $injured_count = (int) ($data['injured_count'] ?? 0);
+        $death_count = (int) ($data['death_count'] ?? 0);
+        $description = (string) ($data['description'] ?? '');
+
+        if ($disaster_type === '' || $affected_families < 0 || $damaged_houses < 0) {
+            return ['success' => false, 'message' => 'Required fields invalid'];
+        }
+
+        $barangay_id = (int) ($this->getReportById($rid)['barangay_id'] ?? 0);
+        $weather_data = $this->getWeatherDataForBarangay($barangay_id);
+        $weather_condition = $weather_data['weather'] ?? 'Unknown';
+        $temperature = $weather_data['temperature'] ?? null;
+        $humidity = $weather_data['humidity'] ?? null;
+        $wind_speed = $weather_data['wind_speed'] ?? null;
+        $severity_level = $this->calculateSeverity($affected_families, $damaged_houses);
+
+        $humidity = $humidity === null ? 0 : (int) $humidity;
+        $temperature = $temperature === null ? 0.0 : (float) $temperature;
+        $wind_speed = $wind_speed === null ? 0.0 : (float) $wind_speed;
+
+        $q = "UPDATE {$this->table} SET disaster_type = ?, affected_families = ?, damaged_houses = ?, injured_count = ?, death_count = ?, description = ?,
+              weather_condition = ?, temperature = ?, humidity = ?, wind_speed = ?, severity_level = ?
+              WHERE id = ? AND user_id = ? AND status = 'submitted'";
+        $stmt = $this->conn->prepare($q);
+        $stmt->bind_param(
+            'siiiissdidsii',
+            $disaster_type,
+            $affected_families,
+            $damaged_houses,
+            $injured_count,
+            $death_count,
+            $description,
+            $weather_condition,
+            $temperature,
+            $humidity,
+            $wind_speed,
+            $severity_level,
+            $rid,
+            $uid
+        );
+
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Report updated'];
+        }
+        return ['success' => false, 'message' => 'Update failed'];
+    }
+
+    /**
+     * Barangay official: delete own report only while submitted.
+     */
+    public function deleteOwnReport($user_id, $report_id) {
+        $rid = (int) $report_id;
+        $uid = (int) $user_id;
+        if ($rid <= 0 || $uid <= 0) {
+            return ['success' => false, 'message' => 'Invalid report'];
+        }
+
+        $stmt = $this->conn->prepare("DELETE FROM {$this->table} WHERE id = ? AND user_id = ? AND status = 'submitted'");
+        $stmt->bind_param('ii', $rid, $uid);
+        $stmt->execute();
+        if ($stmt->affected_rows > 0) {
+            return ['success' => true, 'message' => 'Report deleted'];
+        }
+        return ['success' => false, 'message' => 'Report not found or cannot be deleted'];
     }
 
     /**

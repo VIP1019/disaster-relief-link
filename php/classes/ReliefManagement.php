@@ -31,7 +31,8 @@ class ReliefManagement {
                          VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->conn->prepare($insert_query);
-        $stmt->bind_param('ssiisdi', $item_name, $category, $quantity, $unit_of_measure, $description, $cost_per_unit, $added_by);
+        // item_name, category, quantity, unit_of_measure, description, cost_per_unit, added_by
+        $stmt->bind_param('ssissdi', $item_name, $category, $quantity, $unit_of_measure, $description, $cost_per_unit, $added_by);
 
         if ($stmt->execute()) {
             return ['success' => true, 'message' => 'Item added to inventory', 'item_id' => $this->conn->insert_id];
@@ -49,7 +50,7 @@ class ReliefManagement {
                          WHERE id = ?";
 
         $stmt = $this->conn->prepare($update_query);
-        $stmt->bind_param('ssiisdsi', $item_name, $category, $quantity, $unit_of_measure, $cost_per_unit, $description, $item_id);
+        $stmt->bind_param('ssisdsi', $item_name, $category, $quantity, $unit_of_measure, $cost_per_unit, $description, $item_id);
 
         if ($stmt->execute()) {
             return ['success' => true, 'message' => 'Item updated successfully'];
@@ -112,6 +113,36 @@ class ReliefManagement {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function getAllBarangays() {
+        $query = 'SELECT id, name, municipality, province FROM barangays ORDER BY name';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Remove inventory row if it has never been distributed.
+     */
+    public function deleteInventoryItem($item_id) {
+        $id = (int) $item_id;
+        if ($id <= 0) {
+            return ['success' => false, 'message' => 'Invalid item'];
+        }
+        $chk = $this->conn->prepare('SELECT COUNT(*) AS c FROM relief_distributions WHERE inventory_id = ?');
+        $chk->bind_param('i', $id);
+        $chk->execute();
+        $c = (int) ($chk->get_result()->fetch_assoc()['c'] ?? 0);
+        if ($c > 0) {
+            return ['success' => false, 'message' => 'Cannot delete an item that already has distribution records.'];
+        }
+        $stmt = $this->conn->prepare("DELETE FROM {$this->inventory_table} WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            return ['success' => true, 'message' => 'Inventory item removed'];
+        }
+        return ['success' => false, 'message' => 'Delete failed or item not found'];
+    }
+
     /**
      * Update inventory quantity (after distribution)
      */
@@ -155,7 +186,7 @@ class ReliefManagement {
                          VALUES (?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->conn->prepare($insert_query);
-        $stmt->bind_param('iiiis', $report_id, $barangay_id, $inventory_id, $quantity_distributed, $distributed_by, $notes);
+        $stmt->bind_param('iiiiis', $report_id, $barangay_id, $inventory_id, $quantity_distributed, $distributed_by, $notes);
 
         if ($stmt->execute()) {
             // Update disaster report status
@@ -171,11 +202,12 @@ class ReliefManagement {
      * Get all distributions
      */
     public function getAllDistributions($barangay_id = null, $report_id = null) {
-        $query = "SELECT rd.*, b.name as barangay_name, ri.item_name, ri.category, u.full_name as distributed_by_name
+        $query = "SELECT rd.*, b.name as barangay_name, ri.item_name, ri.category,
+                         COALESCE(u.full_name, '—') as distributed_by_name
                   FROM {$this->distribution_table} rd
                   JOIN barangays b ON rd.barangay_id = b.id
                   JOIN relief_inventory ri ON rd.inventory_id = ri.id
-                  JOIN users u ON rd.distributed_by = u.id
+                  LEFT JOIN users u ON rd.distributed_by = u.id
                   WHERE 1=1";
 
         if ($barangay_id) {
@@ -205,10 +237,11 @@ class ReliefManagement {
      * Get distribution history for a barangay
      */
     public function getBarangayDistributionHistory($barangay_id) {
-        $query = "SELECT rd.*, ri.item_name, ri.category, u.full_name as distributed_by_name
+        $query = "SELECT rd.*, ri.item_name, ri.category,
+                         COALESCE(u.full_name, '—') as distributed_by_name
                   FROM {$this->distribution_table} rd
                   JOIN relief_inventory ri ON rd.inventory_id = ri.id
-                  JOIN users u ON rd.distributed_by = u.id
+                  LEFT JOIN users u ON rd.distributed_by = u.id
                   WHERE rd.barangay_id = ?
                   ORDER BY rd.distribution_date DESC";
 
@@ -232,6 +265,53 @@ class ReliefManagement {
         $stmt = $this->conn->prepare($stats_query);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
+    }
+
+    /**
+     * Resolve barangay PK from official name (for distribution form).
+     */
+    public function resolveBarangayIdByName($name) {
+        if ($name === null || trim((string) $name) === '') {
+            return null;
+        }
+        $n = trim((string) $name);
+        $stmt = $this->conn->prepare('SELECT id FROM barangays WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1');
+        $stmt->bind_param('s', $n);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? (int) $row['id'] : null;
+    }
+
+    /**
+     * Barangay linked to a disaster report.
+     */
+    public function getBarangayIdForReport($report_id) {
+        $rid = (int) $report_id;
+        if ($rid <= 0) {
+            return null;
+        }
+        $stmt = $this->conn->prepare('SELECT barangay_id FROM disaster_reports WHERE id = ?');
+        $stmt->bind_param('i', $rid);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? (int) $row['barangay_id'] : null;
+    }
+
+    /**
+     * Latest report for a barangay that can still receive relief (not closed).
+     */
+    public function getLatestActiveReportIdForBarangay($barangay_id) {
+        $bid = (int) $barangay_id;
+        if ($bid <= 0) {
+            return null;
+        }
+        $stmt = $this->conn->prepare(
+            "SELECT id FROM disaster_reports WHERE barangay_id = ? AND status IN ('submitted','reviewed','prioritized') ORDER BY submitted_at DESC LIMIT 1"
+        );
+        $stmt->bind_param('i', $bid);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return $row ? (int) $row['id'] : null;
     }
 
     /**

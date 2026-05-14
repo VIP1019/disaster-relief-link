@@ -3,9 +3,8 @@
  * Notifications API Endpoints
  */
 
+require_once __DIR__ . '/_cors.php';
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 
 require_once __DIR__ . '/../classes/Notification.php';
 require_once __DIR__ . '/../classes/Auth.php';
@@ -25,6 +24,7 @@ $current_user = Auth::getCurrentUser();
 try {
     switch ($action) {
         case 'get_notifications':
+        case 'list_user':
             if ($request_method === 'GET') {
                 $unread_only = $_GET['unread_only'] ?? false;
                 $notifications = $notification->getUserNotifications($current_user['id'], filter_var($unread_only, FILTER_VALIDATE_BOOLEAN));
@@ -42,16 +42,16 @@ try {
             break;
 
         case 'mark_read':
-            if ($request_method === 'PUT') {
-                $data = json_decode(file_get_contents('php://input'), true);
-                $result = $notification->markAsRead($data['notification_id'] ?? 0);
+            if (in_array($request_method, ['PUT', 'POST'], true)) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $result = $notification->markAsRead((int) ($data['notification_id'] ?? 0), (int) $current_user['id']);
                 http_response_code($result['success'] ? 200 : 400);
                 echo json_encode($result);
             }
             break;
 
         case 'mark_all_read':
-            if ($request_method === 'PUT') {
+            if (in_array($request_method, ['PUT', 'POST'], true)) {
                 $result = $notification->markAllAsRead($current_user['id']);
                 http_response_code($result['success'] ? 200 : 400);
                 echo json_encode($result);
@@ -59,9 +59,10 @@ try {
             break;
 
         case 'delete':
-            if ($request_method === 'DELETE') {
-                $data = json_decode(file_get_contents('php://input'), true);
-                $result = $notification->deleteNotification($data['notification_id'] ?? 0);
+            if (in_array($request_method, ['DELETE', 'POST'], true)) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $isAdmin = Auth::isAdmin();
+                $result = $notification->deleteNotification((int) ($data['notification_id'] ?? 0), (int) $current_user['id'], $isAdmin);
                 http_response_code($result['success'] ? 200 : 400);
                 echo json_encode($result);
             }
@@ -78,6 +79,29 @@ try {
                 );
                 http_response_code($result['success'] ? 201 : 400);
                 echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'list_all':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $limit = (int) ($_GET['limit'] ?? 200);
+                $rows = $notification->getAllNotifications($limit);
+                http_response_code(200);
+                echo json_encode(['success' => true, 'notifications' => $rows]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'list_recipients':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $rows = $notification->getBarangayOfficialRecipients();
+                http_response_code(200);
+                echo json_encode(['success' => true, 'recipients' => $rows]);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

@@ -10,6 +10,26 @@ class Auth {
     private $conn;
     private $table = 'users';
 
+    /**
+     * Start session once per request with a cookie visible site-wide (path /).
+     * Without this, some servers set a narrow cookie path so the next page never sends PHPSESSID.
+     */
+    private static function ensureSession() {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        session_start();
+    }
+
     public function __construct() {
         $db = new Database();
         $this->conn = $db->getConnection();
@@ -22,6 +42,10 @@ class Auth {
         // Validate inputs
         if (empty($username) || empty($email) || empty($password) || empty($full_name) || empty($barangay_name)) {
             return ['success' => false, 'message' => 'All required fields must be filled'];
+        }
+
+        if (strtolower(trim((string) $barangay_name)) === 'mdrrmo') {
+            return ['success' => false, 'message' => 'MDRRMO accounts cannot be created through public registration'];
         }
 
         // Check if user already exists
@@ -87,7 +111,8 @@ class Auth {
         }
 
         // Login successful - set session
-        session_start();
+        self::ensureSession();
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['email'] = $user['email'];
@@ -103,7 +128,7 @@ class Auth {
      * Logout user
      */
     public function logout() {
-        session_start();
+        self::ensureSession();
         session_destroy();
         return ['success' => true, 'message' => 'Logout successful'];
     }
@@ -112,7 +137,7 @@ class Auth {
      * Check if user is logged in
      */
     public static function isLoggedIn() {
-        session_start();
+        self::ensureSession();
         return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
     }
 
@@ -120,7 +145,7 @@ class Auth {
      * Check if user is admin
      */
     public static function isAdmin() {
-        session_start();
+        self::ensureSession();
         return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
     }
 
@@ -128,7 +153,7 @@ class Auth {
      * Get current user data
      */
     public static function getCurrentUser() {
-        session_start();
+        self::ensureSession();
         if (isset($_SESSION['user_id'])) {
             return [
                 'id' => $_SESSION['user_id'],
