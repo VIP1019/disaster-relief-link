@@ -53,7 +53,13 @@ try {
                     $data['damaged_houses'] ?? 0,
                     $data['description'] ?? '',
                     $data['injured_count'] ?? 0,
-                    $data['death_count'] ?? 0
+                    $data['death_count'] ?? 0,
+                    [
+                        'severity_level' => $data['severity_level'] ?? '',
+                        'incident_latitude' => $data['incident_latitude'] ?? null,
+                        'incident_longitude' => $data['incident_longitude'] ?? null,
+                        'geographic_sector_label' => $data['geographic_sector_label'] ?? '',
+                    ]
                 );
 
                 if ($result['success']) {
@@ -88,6 +94,62 @@ try {
                 $result = $report->deleteOwnReport((int) $current_user['id'], $rid);
                 http_response_code($result['success'] ? 200 : 400);
                 echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'suggest_evacuation':
+            if (in_array($request_method, ['PUT', 'POST'], true) && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $center_id = (int) ($data['evacuation_center_id'] ?? $data['center_id'] ?? 0);
+                $result = $report->suggestEvacuationCenter($rid, $center_id, $data['notes'] ?? '');
+                if ($result['success']) {
+                    $message = 'MDRRMO recommends evacuation to ' . $result['center_name'] . '.';
+                    if (!empty($result['center_address'])) {
+                        $message .= ' Address: ' . $result['center_address'] . '.';
+                    }
+                    $notification->createNotification((int) $result['user_id'], 'evacuation_suggestion', $message, $rid);
+                }
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'confirm_evacuation':
+            if (in_array($request_method, ['PUT', 'POST'], true) && ($current_user['user_type'] ?? '') === 'barangay_official') {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $result = $report->confirmEvacuation((int) $current_user['id'], $rid, $data['notes'] ?? '');
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'my_barangay_geo':
+            if ($request_method === 'GET' && ($current_user['user_type'] ?? '') === 'barangay_official') {
+                $bid = $report->getBarangayIdForUser((int) $current_user['id']);
+                if (!$bid) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'No barangay linked to your profile.']);
+                    break;
+                }
+                $geo = $report->getBarangayCenterById($bid);
+                if (!$geo) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Barangay not found']);
+                    break;
+                }
+                http_response_code(200);
+                echo json_encode(['success' => true, 'barangay' => $geo]);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

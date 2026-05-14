@@ -228,6 +228,17 @@ try {
             }
             break;
 
+        case 'deploy_status':
+            if ($request_method === 'GET' && Auth::isLoggedIn()) {
+                $snap = $relief->getDeployStatusSnapshot();
+                http_response_code(200);
+                echo json_encode(['success' => true, 'deploy' => $snap]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid action']);

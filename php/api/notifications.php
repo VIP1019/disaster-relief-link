@@ -7,6 +7,7 @@ require_once __DIR__ . '/_cors.php';
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../classes/Notification.php';
+require_once __DIR__ . '/../classes/SystemSettings.php';
 require_once __DIR__ . '/../classes/Auth.php';
 
 if (!Auth::isLoggedIn()) {
@@ -102,6 +103,32 @@ try {
                 $rows = $notification->getBarangayOfficialRecipients();
                 http_response_code(200);
                 echo json_encode(['success' => true, 'recipients' => $rows]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'emergency_broadcast':
+            if ($request_method === 'GET') {
+                $settings = new SystemSettings();
+                http_response_code(200);
+                echo json_encode(['success' => true, 'broadcast' => $settings->getEmergencyBroadcast()]);
+            }
+            break;
+
+        case 'emergency_broadcast_set':
+            if ($request_method === 'POST' && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $settings = new SystemSettings();
+                $settings->setEmergencyBroadcast([
+                    'active' => !empty($data['active']),
+                    'title' => $data['title'] ?? '',
+                    'body' => $data['body'] ?? '',
+                    'protocol_url' => $data['protocol_url'] ?? '',
+                ]);
+                http_response_code(200);
+                echo json_encode(['success' => true, 'broadcast' => $settings->getEmergencyBroadcast()]);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

@@ -16,6 +16,7 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS relief_distributions;
 DROP TABLE IF EXISTS disaster_reports;
 DROP TABLE IF EXISTS weather_api_logs;
@@ -97,13 +98,23 @@ CREATE TABLE disaster_reports (
     humidity INT DEFAULT NULL,
     wind_speed DECIMAL(6, 2) DEFAULT NULL,
     severity_level ENUM('low', 'medium', 'high', 'critical') NOT NULL DEFAULT 'medium',
+    incident_latitude DECIMAL(10, 8) DEFAULT NULL COMMENT 'Pin from geographic sector map (optional)',
+    incident_longitude DECIMAL(11, 8) DEFAULT NULL,
+    geographic_sector_label VARCHAR(200) DEFAULT NULL COMMENT 'Short sector label from reporter',
+    suggested_evacuation_center_id INT DEFAULT NULL,
+    evacuation_suggestion_notes TEXT DEFAULT NULL,
+    evacuation_suggested_at TIMESTAMP NULL DEFAULT NULL,
+    evacuation_confirmed_at TIMESTAMP NULL DEFAULT NULL,
+    evacuation_confirmation_notes TEXT DEFAULT NULL,
     status ENUM('submitted', 'reviewed', 'prioritized', 'relief_distributed') NOT NULL DEFAULT 'submitted',
     submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_dr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_dr_barangay FOREIGN KEY (barangay_id) REFERENCES barangays(id),
+    CONSTRAINT fk_dr_suggested_evacuation FOREIGN KEY (suggested_evacuation_center_id) REFERENCES evacuation_centers(id) ON DELETE SET NULL,
     INDEX idx_status (status),
     INDEX idx_barangay_id (barangay_id),
+    INDEX idx_suggested_evacuation_center (suggested_evacuation_center_id),
     INDEX idx_severity (severity_level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -192,6 +203,19 @@ CREATE TABLE system_logs (
     CONSTRAINT fk_slog_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Key/value app settings (e.g. region-wide emergency broadcast banner)
+CREATE TABLE system_settings (
+    setting_key VARCHAR(80) PRIMARY KEY,
+    setting_value TEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO system_settings (setting_key, setting_value) VALUES
+('emergency_broadcast_active', '0'),
+('emergency_broadcast_title', 'No active region-wide hazard'),
+('emergency_broadcast_body', 'When MDRRMO activates a broadcast, the title and advisory appear here for all barangay accounts.'),
+('emergency_broadcast_protocol_url', 'https://www.pagasa.dost.gov.ph/tropical-cyclone-bulletin');
 
 -- ----------------------------------------------------------------------------
 -- Seed: barangays — Municipality of Daet, Camarines Norte (demo coordinates)

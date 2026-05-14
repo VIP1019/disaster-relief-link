@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Disaster Reports Review</title>
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
         .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
         .report-id { font-family: monospace; font-size: 11px; font-weight: 700; color: var(--primary); background: #deebff; padding: 2px 6px; border-radius: 4px; }
         .assessment-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; margin-top: 4px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .evac-panel { margin-top: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
+        .evac-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+        @media (max-width: 760px) { .evac-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -24,8 +28,8 @@
                     <p style="font-size: 13px; color: var(--text-subtle);">Review and validate incoming situation reports from barangay officials.</p>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Pending Only</button>
-                    <button class="btn btn-primary">Export Report Ledger</button>
+                    <button type="button" class="btn" id="pendingToggleBtn" style="border: 1px solid var(--border); background: #fff;">Pending Only</button>
+                    <button type="button" class="btn btn-primary" id="exportLedgerBtn">Export Report Ledger</button>
                 </div>
             </header>
 
@@ -58,53 +62,220 @@
                 </div>
             </div>
 
-            <!-- Detail Modal (Hidden by default) -->
-            <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-                <div class="card" style="max-width: 600px; width: 90%; margin: 0;">
-                    <div class="card-title">
-                        <span>Report Assessment</span>
-                        <button onclick="closeModal()" style="border:none; background:none; cursor:pointer;">&times;</button>
+            <!-- Detail Modal -->
+            <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; overflow:auto; padding:24px;" onclick="if(event.target.id==='reportModal')closeReportModal()">
+                <div class="card" style="max-width: 720px; width: 100%; margin: 0; position:relative;">
+                    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Report details</span>
+                        <button type="button" onclick="closeReportModal()" style="border:none; background:none; cursor:pointer; font-size:22px; line-height:1;">&times;</button>
                     </div>
                     <div id="modalContent"></div>
+                    <div id="reportDetailMap" style="height:220px;border-radius:8px;margin-top:12px;border:1px solid var(--border);"></div>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
+        let reportRows = [];
+        let pendingOnly = false;
+        let detailMap = null;
+
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'admin') return;
             loadReports();
+            document.getElementById('pendingToggleBtn').addEventListener('click', () => {
+                pendingOnly = !pendingOnly;
+                document.getElementById('pendingToggleBtn').textContent = pendingOnly ? 'Show All' : 'Pending Only';
+                loadReports();
+            });
+            document.getElementById('exportLedgerBtn').addEventListener('click', exportLedger);
         });
+
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        }
 
         async function loadReports() {
             try {
-                const response = await fetch('../../php/api/reports.php?action=list_all', { credentials: 'include' });
+                const q = pendingOnly ? '&status=submitted' : '';
+                const response = await fetch('../../php/api/reports.php?action=list_all' + q, { credentials: 'include' });
                 const data = await response.json();
-                if (data.success) {
-                    const tbody = document.getElementById('reportsTableBody');
-                    tbody.innerHTML = data.reports.map(r => `
+                if (!data.success) return;
+                reportRows = data.reports || [];
+                const tbody = document.getElementById('reportsTableBody');
+                tbody.innerHTML = reportRows.map(r => `
                         <tr>
-                            <td><span class="report-id">REP-2024-${r.id.toString().padStart(4, '0')}</span></td>
-                            <td><div style="font-weight: 600;">${r.barangay_name}</div><div style="font-size: 11px; color: var(--text-subtle);">Daet, Camarines Norte</div></td>
-                            <td><span class="badge badge-info">${r.disaster_type.toUpperCase()}</span></td>
-                            <td><span class="badge badge-${r.status === 'submitted' ? 'warning' : 'success'}">${r.status.replace('_', ' ').toUpperCase()}</span></td>
+                            <td><button type="button" class="report-id" style="cursor:pointer;border:none;" onclick="openReportDetail(${r.id})">REP-2024-${String(r.id).padStart(4, '0')}</button></td>
+                            <td><div style="font-weight: 600;">${esc(r.barangay_name)}</div><div style="font-size: 11px; color: var(--text-subtle);">Daet, Camarines Norte</div></td>
+                            <td><span class="badge badge-info">${esc(String(r.disaster_type || '').toUpperCase())}</span></td>
+                            <td><span class="badge badge-${r.status === 'submitted' ? 'warning' : 'success'}">${esc(String(r.status || '').replace('_', ' ').toUpperCase())}</span></td>
                             <td>
                                 <div class="assessment-badge">
                                     <div class="dot" style="background: ${r.severity_level === 'critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
-                                    <span>${r.severity_level.toUpperCase()} ASSESSMENT</span>
+                                    <span>${esc(String(r.severity_level || '').toUpperCase())} ASSESSMENT</span>
+                                </div>
+                                <div style="font-size:11px;color:var(--text-subtle);margin-top:4px;">
+                                    ${r.suggested_evacuation_center_name ? 'Evac: ' + esc(r.suggested_evacuation_center_name) + (r.evacuation_confirmed_at ? ' - confirmed' : ' - pending') : 'No evacuation guidance'}
                                 </div>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="approveReport(${r.id})">Verify</button>
-                                <button class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="rejectReport(${r.id})">Return to barangay</button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="openReportDetail(${r.id})">Details</button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="approveReport(${r.id})">Verify</button>
+                                <button type="button" class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="rejectReport(${r.id})">Return</button>
                             </td>
                         </tr>
                     `).join('');
-                }
             } catch (error) { console.error('Reports error:', error); }
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').style.display = 'none';
+            if (detailMap) {
+                detailMap.remove();
+                detailMap = null;
+            }
+        }
+
+        async function openReportDetail(id) {
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('modalContent');
+            modal.style.display = 'flex';
+            content.innerHTML = '<p style="color:var(--text-subtle);">Loading…</p>';
+            if (detailMap) { detailMap.remove(); detailMap = null; }
+            try {
+                const res = await fetch('../../php/api/reports.php?action=get&report_id=' + id, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success || !data.report) {
+                    content.innerHTML = '<p>Could not load report.</p>';
+                    return;
+                }
+                const r = data.report;
+                const when = r.submitted_at ? new Date(String(r.submitted_at).replace(' ','T')).toLocaleString() : '—';
+                content.innerHTML = `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+                        <div><strong>Barangay</strong><br>${esc(r.barangay_name)}</div>
+                        <div><strong>Submitted by</strong><br>${esc(r.submitted_by)}</div>
+                        <div><strong>Disaster type</strong><br>${esc(r.disaster_type)}</div>
+                        <div><strong>Status</strong><br>${esc(r.status)}</div>
+                        <div><strong>Severity</strong><br>${esc(r.severity_level)}</div>
+                        <div><strong>Logged</strong><br>${esc(when)}</div>
+                        <div><strong>Affected families</strong><br>${esc(r.affected_families)}</div>
+                        <div><strong>Damaged houses</strong><br>${esc(r.damaged_houses)}</div>
+                        <div><strong>Injured / Deaths</strong><br>${esc(r.injured_count)} / ${esc(r.death_count)}</div>
+                        <div><strong>Weather (at submit)</strong><br>${esc(r.weather_condition)} · ${r.temperature != null ? esc(r.temperature) + '°C' : '—'} · RH ${r.humidity != null ? esc(r.humidity) : '—'}%</div>
+                    </div>
+                    <div style="margin-top:12px;"><strong>Geographic sector</strong><br>${esc(r.geographic_sector_label || '—')}</div>
+                    <div style="margin-top:12px;"><strong>Description</strong><br><span style="color:var(--text-subtle);white-space:pre-wrap;">${esc(r.description || '—')}</span></div>
+                    <div class="evac-panel">
+                        <div class="card-title" style="margin-bottom:10px;">
+                            <span>Evacuation guidance</span>
+                            <span class="badge badge-${r.evacuation_confirmed_at ? 'success' : (r.suggested_evacuation_center_id ? 'warning' : 'info')}">${r.evacuation_confirmed_at ? 'CONFIRMED' : (r.suggested_evacuation_center_id ? 'PENDING USER' : 'NOT SET')}</span>
+                        </div>
+                        <div class="evac-grid">
+                            <div>
+                                <div class="form-group">
+                                    <label class="form-label">Suggested center</label>
+                                    <select id="evacCenterSelect" class="form-control"><option value="">Loading centers...</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Instruction note</label>
+                                    <textarea id="evacSuggestionNotes" class="form-control" rows="3" placeholder="Example: Bring family kits and coordinate with the center desk.">${esc(r.evacuation_suggestion_notes || '')}</textarea>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="suggestEvacuation(${r.id})">Send evacuation suggestion</button>
+                            </div>
+                            <div style="font-size:13px;color:var(--text-subtle);">
+                                <strong style="color:var(--text-main);">Current guidance</strong><br>
+                                ${r.suggested_evacuation_center_name ? esc(r.suggested_evacuation_center_name) : 'No center suggested yet.'}<br>
+                                ${r.suggested_evacuation_center_address ? esc(r.suggested_evacuation_center_address) + '<br>' : ''}
+                                ${r.suggested_evacuation_contact_phone ? 'Contact: ' + esc(r.suggested_evacuation_contact_phone) + '<br>' : ''}
+                                ${r.evacuation_suggested_at ? 'Sent: ' + esc(new Date(String(r.evacuation_suggested_at).replace(' ','T')).toLocaleString()) + '<br>' : ''}
+                                ${r.evacuation_confirmed_at ? '<span style="color:var(--success);font-weight:700;">User confirmed evacuation: ' + esc(new Date(String(r.evacuation_confirmed_at).replace(' ','T')).toLocaleString()) + '</span><br>' : ''}
+                                ${r.evacuation_confirmation_notes ? '<span style="white-space:pre-wrap;">' + esc(r.evacuation_confirmation_notes) + '</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                loadEvacuationChoices(r.barangay_id, r.suggested_evacuation_center_id);
+                if (typeof L !== 'undefined' && r.map_latitude && r.map_longitude) {
+                    setTimeout(() => {
+                        const el = document.getElementById('reportDetailMap');
+                        detailMap = L.map(el).setView([+r.map_latitude, +r.map_longitude], 15);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(detailMap);
+                        L.marker([+r.map_latitude, +r.map_longitude]).addTo(detailMap).bindPopup('Report location').openPopup();
+                        detailMap.invalidateSize();
+                    }, 100);
+                }
+            } catch (e) {
+                content.innerHTML = '<p>Network error.</p>';
+            }
+        }
+
+        async function loadEvacuationChoices(barangayId, selectedId) {
+            const select = document.getElementById('evacCenterSelect');
+            if (!select) return;
+            try {
+                const res = await fetch('../../php/api/evacuation.php?action=list&barangay_id=' + encodeURIComponent(barangayId), { credentials: 'include' });
+                const data = await res.json();
+                const centers = data.success && Array.isArray(data.centers) ? data.centers : [];
+                select.innerHTML = '<option value="">Select an evacuation center</option>' + centers.map(c => {
+                    const disabled = c.status === 'closed' ? ' disabled' : '';
+                    const selected = String(c.id) === String(selectedId || '') ? ' selected' : '';
+                    return `<option value="${esc(c.id)}"${selected}${disabled}>${esc(c.center_name)} (${esc(c.current_occupancy)}/${esc(c.capacity)} - ${esc(c.status)})</option>`;
+                }).join('');
+                if (!centers.length) {
+                    select.innerHTML = '<option value="">No centers found for this barangay</option>';
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Could not load centers</option>';
+            }
+        }
+
+        async function suggestEvacuation(reportId) {
+            const centerId = document.getElementById('evacCenterSelect')?.value || '';
+            const notes = document.getElementById('evacSuggestionNotes')?.value || '';
+            if (!centerId) { alert('Select an evacuation center first.'); return; }
+            try {
+                const response = await fetch('../../php/api/reports.php?action=suggest_evacuation', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_id: reportId, evacuation_center_id: centerId, notes })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Evacuation suggestion sent to the barangay account.');
+                    openReportDetail(reportId);
+                    loadReports();
+                } else {
+                    alert(data.message || 'Could not send evacuation suggestion.');
+                }
+            } catch (error) {
+                alert('Request failed.');
+            }
+        }
+
+        function exportLedger() {
+            if (!reportRows.length) { alert('No rows to export.'); return; }
+            const cols = ['id','barangay_name','disaster_type','status','severity_level','affected_families','damaged_houses','submitted_at','map_latitude','map_longitude','geographic_sector_label'];
+            const lines = [cols.join(',')];
+            reportRows.forEach(r => {
+                lines.push(cols.map(c => {
+                    let v = r[c] != null ? r[c] : '';
+                    v = String(v).replace(/"/g, '""');
+                    if (/[",\n]/.test(v)) v = '"' + v + '"';
+                    return v;
+                }).join(','));
+            });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+            a.download = 'relieflink-disaster-reports.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
         }
 
         async function rejectReport(id) {
@@ -136,6 +307,7 @@
                 const data = await response.json();
                 if (data.success) {
                     alert('Report verified and added to priority engine.');
+                    closeReportModal();
                     loadReports();
                 }
             } catch (error) { alert('Verification failed.'); }

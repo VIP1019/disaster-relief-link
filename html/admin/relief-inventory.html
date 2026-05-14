@@ -25,9 +25,9 @@
                     <h2 style="font-size: 20px;">Inventory Management</h2>
                     <p style="font-size: 13px; color: var(--text-subtle);">Centralized stock — MDRRMO Daet, Camarines Norte</p>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Search Resources...</button>
-                    <button class="btn btn-primary">Deploy Resources</button>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <input type="search" id="inventorySearch" class="form-control" placeholder="Search resources by name or category…" style="max-width:280px;">
+                    <button type="button" class="btn btn-primary" id="deployResourcesBtn">Deploy Resources</button>
                 </div>
             </header>
 
@@ -72,23 +72,7 @@
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody">
-                                <!-- Populated by JS -->
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 600;">Rice Grains 50kg</div>
-                                        <div class="sku-tag">SKU: FOOD-RC-50</div>
-                                    </td>
-                                    <td><span class="badge" style="background: #e3fcef; color: #006644;">FOOD</span></td>
-                                    <td>
-                                        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
-                                            <span>420 Sacks</span>
-                                            <span style="color: var(--text-subtle);">84%</span>
-                                        </div>
-                                        <div class="stock-progress"><div style="width: 84%; height: 100%; background: var(--success);"></div></div>
-                                    </td>
-                                    <td><span class="badge badge-success">Stable</span></td>
-                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Update</button></td>
-                                </tr>
+                                <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading inventory…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -171,6 +155,15 @@
         </div>
     </div>
 
+    <div id="deployGuideModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:24px;">
+        <div class="card" style="max-width:420px;">
+            <div class="card-title">Deploy resources</div>
+            <p style="font-size:13px;color:var(--text-subtle);">Record a relief shipment from <strong>Distribution Management</strong>: pick barangay, inventory line, and quantity. That page pulls live stock and active disaster reports.</p>
+            <a href="distribution.html" class="btn btn-primary btn-block" style="text-align:center;text-decoration:none;">Open distribution</a>
+            <button type="button" class="btn btn-block" style="margin-top:8px;border:1px solid var(--border);" onclick="document.getElementById('deployGuideModal').style.display='none'">Close</button>
+        </div>
+    </div>
+
     <script src="../js/relief-sidebar.js"></script>
     <script>
         const api = '../../php/api';
@@ -182,7 +175,58 @@
             loadInventory();
             document.getElementById('saveInvBtn').addEventListener('click', saveInventoryEdit);
             document.getElementById('cancelInvBtn').addEventListener('click', () => { document.getElementById('invModal').style.display = 'none'; });
+            document.getElementById('inventorySearch').addEventListener('input', filterInventoryTable);
+            document.getElementById('deployResourcesBtn').addEventListener('click', () => {
+                document.getElementById('deployGuideModal').style.display = 'flex';
+            });
+            document.getElementById('deployGuideModal').addEventListener('click', (e) => {
+                if (e.target.id === 'deployGuideModal') document.getElementById('deployGuideModal').style.display = 'none';
+            });
         });
+
+        let lastInventoryRows = [];
+
+        function filterInventoryTable() {
+            const q = (document.getElementById('inventorySearch').value || '').trim().toLowerCase();
+            const tbody = document.getElementById('inventoryTableBody');
+            if (!lastInventoryRows.length) return;
+            const filtered = !q ? lastInventoryRows : lastInventoryRows.filter(item => {
+                const blob = ((item.item_name || '') + ' ' + (item.category || '') + ' ' + (item.unit_of_measure || '')).toLowerCase();
+                return blob.includes(q);
+            });
+            tbody.innerHTML = filtered.map(renderInvRow).join('');
+            if (!filtered.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">No matching items.</td></tr>';
+            }
+        }
+
+        function renderInvRow(item) {
+            const q = parseInt(item.quantity, 10) || 0;
+            const stockPercent = Math.min((q / 1000) * 100, 100);
+            const status = stockPercent > 50 ? 'Stable' : (stockPercent > 20 ? 'Moderate' : 'Critical');
+            const badgeClass = status === 'Stable' ? 'success' : (status === 'Moderate' ? 'warning' : 'danger');
+            const cat = item.category || 'General';
+            return `
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">${item.item_name.replace(/</g, '')}</div>
+                        <div class="sku-tag">ID: ${item.id}</div>
+                    </td>
+                    <td><span class="badge badge-info">${cat}</span></td>
+                    <td>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
+                            <span>${q} ${item.unit_of_measure || 'units'}</span>
+                            <span style="color: var(--text-subtle);">${Math.round(stockPercent)}%</span>
+                        </div>
+                        <div class="stock-progress"><div style="width: ${stockPercent}%; height: 100%; background: var(--${badgeClass});"></div></div>
+                    </td>
+                    <td><span class="badge badge-${badgeClass}">${status}</span></td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openInvEdit(${item.id})">Edit</button>
+                        <button type="button" class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="deleteInv(${item.id})">Delete</button>
+                    </td>
+                </tr>`;
+        }
 
         async function loadSummary() {
             try {
@@ -204,35 +248,8 @@
                 const response = await fetch(api + '/relief.php?action=inventory_list', { credentials: 'include' });
                 const data = await response.json();
                 if (data.success && data.inventory) {
-                    const tbody = document.getElementById('inventoryTableBody');
-                    tbody.innerHTML = data.inventory.map(item => {
-                        const q = parseInt(item.quantity, 10) || 0;
-                        const stockPercent = Math.min((q / 1000) * 100, 100);
-                        const status = stockPercent > 50 ? 'Stable' : (stockPercent > 20 ? 'Moderate' : 'Critical');
-                        const badgeClass = status === 'Stable' ? 'success' : (status === 'Moderate' ? 'warning' : 'danger');
-                        const cat = item.category || 'General';
-                        return `
-                            <tr>
-                                <td>
-                                    <div style="font-weight: 600;">${item.item_name.replace(/</g, '')}</div>
-                                    <div class="sku-tag">ID: ${item.id}</div>
-                                </td>
-                                <td><span class="badge badge-info">${cat}</span></td>
-                                <td>
-                                    <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600;">
-                                        <span>${q} ${item.unit_of_measure || 'units'}</span>
-                                        <span style="color: var(--text-subtle);">${Math.round(stockPercent)}%</span>
-                                    </div>
-                                    <div class="stock-progress"><div style="width: ${stockPercent}%; height: 100%; background: var(--${badgeClass});"></div></div>
-                                </td>
-                                <td><span class="badge badge-${badgeClass}">${status}</span></td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="openInvEdit(${item.id})">Edit</button>
-                                    <button type="button" class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="deleteInv(${item.id})">Delete</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
+                    lastInventoryRows = data.inventory;
+                    filterInventoryTable();
                 }
             } catch (error) { console.error('Inventory error:', error); }
         }

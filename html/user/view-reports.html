@@ -45,11 +45,12 @@
                                 <th>Disaster</th>
                                 <th>Status</th>
                                 <th>Severity</th>
+                                <th>Evacuation</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="reportsTableBody">
-                            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading…</td></tr>
+                            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -98,13 +99,34 @@
             return `<span class="badge badge-${cls}">${(st || '').replace('_', ' ').toUpperCase()}</span>`;
         }
 
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        }
+
+        function evacuationCell(r) {
+            if (!r.suggested_evacuation_center_id) {
+                return '<span style="font-size:12px;color:var(--text-subtle);">Waiting for MDRRMO guidance</span>';
+            }
+            const confirmed = !!r.evacuation_confirmed_at;
+            const contact = r.suggested_evacuation_contact_phone ? `<div style="font-size:11px;color:var(--text-subtle);">Contact: ${esc(r.suggested_evacuation_contact_phone)}</div>` : '';
+            const note = r.evacuation_suggestion_notes ? `<div style="font-size:11px;color:var(--text-subtle);max-width:280px;white-space:normal;">${esc(r.evacuation_suggestion_notes)}</div>` : '';
+            return `
+                <div style="font-weight:700;">${esc(r.suggested_evacuation_center_name)}</div>
+                <div style="font-size:11px;color:var(--text-subtle);max-width:280px;white-space:normal;">${esc(r.suggested_evacuation_center_address || '')}</div>
+                ${contact}
+                ${note}
+                ${confirmed ? '<span class="badge badge-success">EVACUATED</span>' : `<button type="button" class="btn btn-sm btn-primary" style="margin-top:6px;" onclick="confirmEvacuation(${r.id})">I evacuated here</button>`}
+            `;
+        }
+
         async function loadReports() {
             try {
                 const response = await fetch(api + '/reports.php?action=list_user', { credentials: 'include' });
                 const data = await response.json();
                 const tbody = document.getElementById('reportsTableBody');
                 if (!data.success || !data.reports || data.reports.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-subtle);">No reports yet. Submit one from the menu.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-subtle);">No reports yet. Submit one from the menu.</td></tr>';
                     return;
                 }
                 tbody.innerHTML = data.reports.map(r => {
@@ -113,9 +135,10 @@
                     return `<tr>
                         <td><span class="report-id">#${r.id}</span></td>
                         <td style="font-size:12px;">${when}</td>
-                        <td><span class="badge badge-info">${(r.disaster_type || '').toUpperCase()}</span></td>
+                        <td><span class="badge badge-info">${esc((r.disaster_type || '').toUpperCase())}</span></td>
                         <td>${statusBadge(r.status)}</td>
-                        <td><span class="badge badge-${r.severity_level === 'critical' ? 'danger' : 'primary'}">${(r.severity_level || '').toUpperCase()}</span></td>
+                        <td><span class="badge badge-${r.severity_level === 'critical' ? 'danger' : 'primary'}">${esc((r.severity_level || '').toUpperCase())}</span></td>
+                        <td>${evacuationCell(r)}</td>
                         <td>
                             ${canEdit ? `<button type="button" class="btn btn-sm btn-primary" onclick="openEdit(${r.id})">Edit</button>
                             <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Locked</span>'}
@@ -176,6 +199,24 @@
             const j = await res.json();
             if (j.success) loadReports();
             else alert(j.message || 'Delete failed');
+        }
+
+        async function confirmEvacuation(id) {
+            const notes = prompt('Optional note for MDRRMO, such as number of families already at the center:', '');
+            if (notes === null) return;
+            const res = await fetch(api + '/reports.php?action=confirm_evacuation', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: id, notes })
+            });
+            const j = await res.json();
+            if (j.success) {
+                alert('Evacuation confirmation sent.');
+                loadReports();
+            } else {
+                alert(j.message || 'Confirmation failed');
+            }
         }
     </script>
 </body>

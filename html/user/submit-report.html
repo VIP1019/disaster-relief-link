@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Disaster Incident Report</title>
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
         .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
@@ -34,7 +35,7 @@
                     <h2 style="font-size: 20px;">Disaster Incident Report</h2>
                     <p style="font-size: 13px; color: var(--text-subtle);">Formal incident documentation for Barangay Officials.</p>
                 </div>
-                <button class="btn" style="border: 1px solid var(--border); background: #fff;">Deploy Status</button>
+                <button type="button" class="btn" id="deployStatusBtn" style="border: 1px solid var(--border); background: #fff;">Deploy Status</button>
             </header>
 
             <form id="incidentForm" class="animate-fade-in">
@@ -70,12 +71,14 @@
                             <input type="hidden" id="disasterType" name="disasterType" required>
 
                             <label class="form-label">Geographic Sector Mapping</label>
-                            <div style="height: 180px; background: #172b4d; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; margin-top: 8px;">
-                                <div style="text-align: center;">
-                                    <div style="font-weight: 700;">Bagasbas coastal / flood-prone zone</div>
-                                    <div style="opacity: 0.6;">Tap to calibrate coordinates</div>
-                                </div>
+                            <p style="font-size: 12px; color: var(--text-subtle); margin: 4px 0 8px;">Drag the pin to the incident location. Coordinates are saved with your report for MDRRMO mapping.</p>
+                            <div id="sectorMap" style="height: 220px; border-radius: 8px; border: 1px solid var(--border); z-index: 1;"></div>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label class="form-label">Sector label (optional)</label>
+                                <input type="text" id="sectorLabel" class="form-control" placeholder="e.g. coastal sitio, purok, landmark">
                             </div>
+                            <input type="hidden" id="incidentLat">
+                            <input type="hidden" id="incidentLng">
                         </div>
 
                         <!-- Situational Assessment -->
@@ -143,11 +146,30 @@
         </main>
     </div>
 
+    <div id="deployModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+        <div class="card" style="max-width:480px;width:100%;position:relative;">
+            <button type="button" id="closeDeployModal" style="position:absolute;top:12px;right:12px;border:none;background:none;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
+            <div class="card-title">Field deploy snapshot</div>
+            <div id="deployModalBody" style="font-size:13px;color:var(--text-subtle);">Loading…</div>
+            <p style="font-size:11px;margin-top:12px;color:var(--text-subtle);">Figures are derived from relief distribution logs. Full logistics: MDRRMO Distribution Management.</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
+    let sectorMap = null;
+    let sectorMarker = null;
+
     document.addEventListener('DOMContentLoaded', async () => {
         const user = await ReliefSidebar.mount();
         if (!user || user.user_type !== 'barangay_official') return;
+
+        initSectorMap();
+
+        document.getElementById('deployStatusBtn').addEventListener('click', openDeployModal);
+        document.getElementById('closeDeployModal').addEventListener('click', () => { document.getElementById('deployModal').style.display = 'none'; });
+        document.getElementById('deployModal').addEventListener('click', (e) => { if (e.target.id === 'deployModal') document.getElementById('deployModal').style.display = 'none'; });
 
         const typeOptions = document.querySelectorAll('.type-option');
         typeOptions.forEach(opt => {
@@ -184,7 +206,10 @@
                 description: document.getElementById('description').value,
                 affected_families: document.getElementById('affectedFamilies').value,
                 damaged_houses: document.getElementById('damagedHouses').value,
-                severity_level: document.getElementById('severityLevel').value
+                severity_level: document.getElementById('severityLevel').value,
+                incident_latitude: document.getElementById('incidentLat').value || null,
+                incident_longitude: document.getElementById('incidentLng').value || null,
+                geographic_sector_label: document.getElementById('sectorLabel').value.trim()
             };
 
             try {
@@ -210,6 +235,59 @@
             }
         });
     });
+
+    async function initSectorMap() {
+        if (typeof L === 'undefined') return;
+        let lat = 14.1128, lng = 122.9559, label = 'Daet';
+        try {
+            const res = await fetch('../../php/api/reports.php?action=my_barangay_geo', { credentials: 'include' });
+            const j = await res.json();
+            if (j.success && j.barangay) {
+                lat = j.barangay.latitude;
+                lng = j.barangay.longitude;
+                label = j.barangay.name;
+            }
+        } catch (e) { console.warn(e); }
+
+        sectorMap = L.map('sectorMap', { scrollWheelZoom: false }).setView([lat, lng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(sectorMap);
+        sectorMarker = L.marker([lat, lng], { draggable: true }).addTo(sectorMap).bindPopup('Incident pin — drag to exact location<br><small>' + label + '</small>').openPopup();
+        function syncHidden() {
+            const p = sectorMarker.getLatLng();
+            document.getElementById('incidentLat').value = p.lat.toFixed(6);
+            document.getElementById('incidentLng').value = p.lng.toFixed(6);
+        }
+        sectorMarker.on('dragend', syncHidden);
+        sectorMap.on('click', (ev) => {
+            sectorMarker.setLatLng(ev.latlng);
+            syncHidden();
+        });
+        syncHidden();
+        setTimeout(() => sectorMap.invalidateSize(), 300);
+    }
+
+    async function openDeployModal() {
+        const m = document.getElementById('deployModal');
+        const body = document.getElementById('deployModalBody');
+        m.style.display = 'flex';
+        body.textContent = 'Loading…';
+        try {
+            const res = await fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' });
+            const j = await res.json();
+            if (!j.success || !j.deploy) {
+                body.textContent = 'Could not load deploy status.';
+                return;
+            }
+            const d = j.deploy;
+            const t = (d.teams || []).map(x => '<div style="display:flex;justify-content:space-between;margin:6px 0;"><span>' + x.name + '</span><span style="font-weight:700;">' + x.status + '</span></div>').join('');
+            body.innerHTML =
+                '<div style="font-size:28px;font-weight:800;color:var(--primary);">' + (d.readiness_score || '—') + '%</div><div style="font-size:11px;margin-bottom:12px;">Readiness (from distribution activity)</div>' +
+                '<div style="margin:8px 0;font-weight:600;">Teams</div>' + t +
+                '<div style="margin-top:12px;font-size:12px;">Est. active convoys: <strong>' + (d.en_route_trucks_estimate || '—') + '</strong></div>';
+        } catch (e) {
+            body.textContent = 'Network error.';
+        }
+    }
     </script>
 </body>
 </html>

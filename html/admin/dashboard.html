@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Admin Command Center</title>
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
         .sidebar-brand-container { display: flex; align-items: center; gap: 10px; padding: 0 16px; margin-bottom: 20px; }
@@ -26,10 +27,10 @@
                     <p style="font-size: 13px; color: var(--text-subtle);">MDRRMO Daet, Camarines Norte | Command Center</p>
                 </div>
                 <div style="display: flex; gap: 16px; align-items: center;">
-                    <button class="btn btn-primary" style="background: #172b4d;">
+                    <a href="manage-notifications.html#broadcast" class="btn btn-primary" style="background: #172b4d; text-decoration:none;">
                         <svg class="icon" style="width: 14px; height: 14px;"><path d="M12 5v14M5 12h14"></path></svg>
                         Initiate Emergency Alert
-                    </button>
+                    </a>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe1e6; display: flex; align-items: center; justify-content: center; font-weight: 600;">AD</div>
                         <div style="text-align: right;">
@@ -105,31 +106,23 @@
 
             <!-- Distribution Map & Live Feed (Placeholders matching Figure 7) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-top: var(--space-lg);" class="animate-fade-in">
-                <div class="card" style="min-height: 200px; position: relative; overflow: hidden; background: #172b4d;">
-                    <div style="position: absolute; top: 16px; left: 16px; z-index: 10; color: #fff;">
-                        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; opacity: 0.8;">Live Hazard Feed</div>
-                        <div style="font-size: 14px; font-weight: 700;">Active Zone Density Map</div>
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-subtle);">Live hazard feed</div>
+                            <div style="font-size: 14px; font-weight: 700;">Incident map + barangay weather</div>
+                        </div>
+                        <a href="weather-monitoring.html" class="btn btn-sm btn-primary">Weather dashboard</a>
                     </div>
-                    <div style="width: 100%; height: 100%; opacity: 0.3; background-image: url('https://www.google.com/maps/vt/pb=!1m4!1m3!1i12!2i3456!3i1234!2m3!1e0!2sm!3i123456789!3m8!2sen!3sph!4e1105!6m6!1e12!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af!2zMTPCsDE0JzA0LjMiTiAxMjDCsDU5JzAzLjIiRQ!4m1!1af!5m1!1af'); background-size: cover; background-position: center;"></div>
+                    <div id="hazardMap" style="height: 320px;"></div>
                 </div>
                 <div class="card">
                     <div class="card-title">Response Teams</div>
-                    <div style="display: flex; gap: 12px; flex-direction: column;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                            <span>Rescue team — Camambugan flood response</span>
-                            <span class="badge badge-success">Deployed</span>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                            <span>Logistics-1 (Warehouse B)</span>
-                            <span class="badge badge-info">Loading</span>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px;">
-                            <span>Engineering-3 (Main Bridge)</span>
-                            <span class="badge badge-warning">En Route</span>
-                        </div>
+                    <div id="responseTeamsBody" style="display: flex; gap: 12px; flex-direction: column;">
+                        <div style="font-size: 13px; color: var(--text-subtle);">Loading…</div>
                     </div>
                     <div style="margin-top: 20px; text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700;">94.8%</div>
+                        <div id="readinessScore" style="font-size: 24px; font-weight: 700;">—</div>
                         <div style="font-size: 11px; color: var(--text-subtle);">Response Readiness Score</div>
                     </div>
                 </div>
@@ -137,26 +130,41 @@
         </main>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
+        let hazardMap = null;
+        let hazardLayer = null;
+
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'admin') return;
             loadDashboardData();
         });
 
+        function sevColor(sev) {
+            const s = (sev || '').toLowerCase();
+            if (s === 'critical') return '#de350b';
+            if (s === 'high') return '#ff8b00';
+            if (s === 'medium') return '#0052cc';
+            return '#36b37e';
+        }
+
         async function loadDashboardData() {
             try {
-                const [reports, priority, inventory, stats] = await Promise.all([
+                const [reports, priority, inventory, stats, deploy, weather] = await Promise.all([
                     fetch('../../php/api/reports.php?action=list_all', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/priority.php?action=get_rankings', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/relief.php?action=inventory_summary', { credentials: 'include' }).then(r => r.json()),
-                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json())
+                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/weather.php?action=barangay_dashboard', { credentials: 'include' }).then(r => r.json())
                 ]);
 
                 if (reports.success) {
                     document.getElementById('activeReports').textContent = reports.reports.filter(r => r.status !== 'relief_distributed').length;
                     document.getElementById('affectedBarangays').textContent = new Set(reports.reports.map(r => r.barangay_id)).size;
+                    renderHazardMap(reports.reports || [], weather.success ? weather.rows : []);
                 }
 
                 if (priority.success) {
@@ -169,7 +177,56 @@
                     document.getElementById('reliefItems').textContent = rows.reduce((acc, item) => acc + parseInt(item.total_quantity || 0, 10), 0);
                     populateInventory(rows.slice(0, 6));
                 }
+
+                if (deploy.success && deploy.deploy) {
+                    const d = deploy.deploy;
+                    const tb = document.getElementById('responseTeamsBody');
+                    tb.innerHTML = (d.teams || []).map(t => {
+                        const badge = (t.status || '').toUpperCase() === 'DEPLOYED' ? 'success' : ((t.status || '').toUpperCase() === 'LOADING' ? 'info' : 'warning');
+                        return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;"><span>' + String(t.name).replace(/</g,'') + '</span><span class="badge badge-' + badge + '">' + String(t.status).replace(/</g,'') + '</span></div>';
+                    }).join('');
+                    document.getElementById('readinessScore').textContent = (d.readiness_score != null ? d.readiness_score + '%' : '—');
+                }
             } catch (error) { console.error('Dashboard error:', error); }
+        }
+
+        function renderHazardMap(reportList, weatherRows) {
+            if (typeof L === 'undefined') return;
+            const center = [14.1128, 122.9559];
+            if (!hazardMap) {
+                hazardMap = L.map('hazardMap', { scrollWheelZoom: false }).setView(center, 11);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(hazardMap);
+                hazardLayer = L.layerGroup().addTo(hazardMap);
+            }
+            hazardLayer.clearLayers();
+            const pts = [];
+            reportList.forEach(r => {
+                const lat = parseFloat(r.map_latitude);
+                const lng = parseFloat(r.map_longitude);
+                if (isNaN(lat) || isNaN(lng)) return;
+                const rad = 6 + Math.min(18, Math.sqrt(parseInt(r.affected_families, 10) || 0));
+                const c = sevColor(r.severity_level);
+                const m = L.circleMarker([lat, lng], { radius: rad, color: c, fillColor: c, fillOpacity: 0.55, weight: 2 });
+                m.bindPopup('<strong>' + String(r.barangay_name || '') + '</strong><br>' + String(r.disaster_type || '') + ' · ' + String(r.severity_level || '') + '<br><small>Status: ' + String(r.status || '') + '</small>');
+                m.addTo(hazardLayer);
+                pts.push([lat, lng]);
+            });
+            (weatherRows || []).forEach(w => {
+                const lat = w.latitude, lon = w.longitude;
+                if (lat == null || lon == null) return;
+                const pop = '<strong>WX ' + String(w.barangay_name || '') + '</strong><br>' +
+                    (w.temperature != null ? w.temperature + '°C ' : '') +
+                    (w.weather_condition != null ? String(w.weather_condition) : '') +
+                    (w.flood_risk_level != null ? '<br>Flood: ' + String(w.flood_risk_level) + ' (' + w.flood_risk_score + ')' : '');
+                L.circleMarker([+lat, +lon], { radius: 5, color: '#00a3bf', fillColor: '#00c7e6', fillOpacity: 0.35, weight: 1 })
+                    .bindPopup(pop).addTo(hazardLayer);
+            });
+            if (pts.length) {
+                hazardMap.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 12 });
+            } else {
+                hazardMap.setView(center, 11);
+            }
+            setTimeout(() => hazardMap.invalidateSize(), 400);
         }
 
         function populatePriorityTable(rankings) {

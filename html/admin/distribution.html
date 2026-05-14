@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Distribution Management</title>
     <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
         .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
@@ -25,9 +26,9 @@
                     <p style="font-size: 13px; color: var(--text-subtle);">Active logistics and relief deployment tracking logs.</p>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Global View</button>
-                    <button class="btn" style="border: 1px solid var(--border); background: #fff;">Map View</button>
-                    <button class="btn btn-primary">Deploy Status</button>
+                    <button type="button" class="btn" id="btnGlobalView" style="border: 1px solid var(--border); background: #fff;">Global View</button>
+                    <button type="button" class="btn" id="btnMapView" style="border: 1px solid var(--border); background: #fff;">Map View</button>
+                    <button type="button" class="btn btn-primary" id="btnDeployStatus">Deploy Status</button>
                 </div>
             </header>
 
@@ -35,8 +36,8 @@
                 <div class="truck-card">
                     <div class="truck-icon"><svg class="icon"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon></svg></div>
                     <div style="flex: 1;">
-                        <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle);">EN ROUTE NOW</div>
-                        <div style="font-size: 20px; font-weight: 700;">12 Trucks</div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle);">EN ROUTE NOW (est.)</div>
+                        <div style="font-size: 20px; font-weight: 700;" id="truckEnRoute">—</div>
                     </div>
                     <span class="badge badge-success">85% Active</span>
                 </div>
@@ -105,7 +106,7 @@
                         <div style="margin-top: 24px; text-align: center;">
                             <div style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); border-top-color: #fff; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
                                 <div style="text-align: center;">
-                                    <div style="font-size: 20px; font-weight: 800;">94.8%</div>
+                                    <div id="hubEfficiency" style="font-size: 20px; font-weight: 800;">94.8%</div>
                                     <div style="font-size: 8px; opacity: 0.6;">EFFICIENCY</div>
                                 </div>
                             </div>
@@ -135,6 +136,29 @@
         </main>
     </div>
 
+    <div id="modalGlobal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target.id==='modalGlobal')document.getElementById('modalGlobal').style.display='none'">
+        <div class="card" style="max-width:520px;width:100%;" onclick="event.stopPropagation()">
+            <div class="card-title">Global distribution view</div>
+            <div id="globalViewBody" style="font-size:13px;color:var(--text-subtle);">Loading…</div>
+            <button type="button" class="btn btn-block" style="margin-top:16px;border:1px solid var(--border);" onclick="document.getElementById('modalGlobal').style.display='none'">Close</button>
+        </div>
+    </div>
+    <div id="modalMap" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target.id==='modalMap'){document.getElementById('modalMap').style.display='none';if(window.__distMap){window.__distMap.remove();window.__distMap=null;}}">
+        <div class="card" style="max-width:900px;width:100%;padding:0;overflow:hidden;" onclick="event.stopPropagation()">
+            <div class="card-title" style="padding:12px 16px;margin:0;">Distribution map (barangay destinations)</div>
+            <div id="distMap" style="height:420px;"></div>
+            <button type="button" class="btn" style="margin:12px 16px;border:1px solid var(--border);" onclick="document.getElementById('modalMap').style.display='none';if(window.__distMap){window.__distMap.remove();window.__distMap=null;}">Close</button>
+        </div>
+    </div>
+    <div id="modalDeploy" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target.id==='modalDeploy')document.getElementById('modalDeploy').style.display='none'">
+        <div class="card" style="max-width:520px;width:100%;" onclick="event.stopPropagation()">
+            <div class="card-title">Deploy status</div>
+            <div id="deployViewBody" style="font-size:13px;">Loading…</div>
+            <button type="button" class="btn btn-block" style="margin-top:16px;border:1px solid var(--border);" onclick="document.getElementById('modalDeploy').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -142,6 +166,9 @@
             if (!user || user.user_type !== 'admin') return;
             await loadData();
             await loadDistributions();
+            document.getElementById('btnGlobalView').addEventListener('click', openGlobalView);
+            document.getElementById('btnMapView').addEventListener('click', openMapView);
+            document.getElementById('btnDeployStatus').addEventListener('click', openDeployModal);
         });
 
         async function loadData() {
@@ -163,12 +190,80 @@
             } catch (error) { console.error('Load error:', error); }
         }
 
+        async function openGlobalView() {
+            document.getElementById('modalGlobal').style.display = 'flex';
+            const body = document.getElementById('globalViewBody');
+            body.textContent = 'Loading…';
+            try {
+                const [statsRes, deployRes] = await Promise.all([
+                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' }).then(r => r.json())
+                ]);
+                const s = statsRes.statistics || {};
+                const d = deployRes.success ? deployRes.deploy : {};
+                body.innerHTML = `
+                    <ul style="margin:0;padding-left:18px;line-height:1.7;">
+                        <li><strong>Barangays served:</strong> ${s.barangays_served ?? 0}</li>
+                        <li><strong>Total distribution runs:</strong> ${s.total_distributions ?? 0}</li>
+                        <li><strong>Units moved:</strong> ${s.total_units_distributed ?? 0}</li>
+                        <li><strong>SKU types used:</strong> ${s.items_distributed ?? 0}</li>
+                        <li><strong>Readiness (model):</strong> ${d.readiness_score != null ? d.readiness_score + '%' : '—'}</li>
+                    </ul>`;
+            } catch (e) { body.textContent = 'Could not load statistics.'; }
+        }
+
+        async function openMapView() {
+            document.getElementById('modalMap').style.display = 'flex';
+            if (window.__distMap) { window.__distMap.remove(); window.__distMap = null; }
+            try {
+                const listRes = await fetch('../../php/api/relief.php?action=distribution_list', { credentials: 'include' }).then(r => r.json());
+                const rows = listRes.success && listRes.distributions ? listRes.distributions : [];
+                setTimeout(() => {
+                    if (typeof L === 'undefined') return;
+                    const center = [14.1128, 122.9559];
+                    window.__distMap = L.map('distMap').setView(center, 11);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(window.__distMap);
+                    const g = L.layerGroup().addTo(window.__distMap);
+                    const pts = [];
+                    rows.forEach(d => {
+                        const la = parseFloat(d.barangay_latitude), lo = parseFloat(d.barangay_longitude);
+                        if (isNaN(la) || isNaN(lo)) return;
+                        L.circleMarker([la, lo], { radius: 8, color: '#0052cc', fillOpacity: 0.4 })
+                            .bindPopup('<strong>' + String(d.barangay_name) + '</strong><br>' + String(d.item_name) + '<br>' + d.quantity_distributed + ' units')
+                            .addTo(g);
+                        pts.push([la, lo]);
+                    });
+                    if (pts.length) window.__distMap.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 12 });
+                    window.__distMap.invalidateSize();
+                }, 80);
+            } catch (e) { alert('Could not load map data.'); }
+        }
+
+        async function openDeployModal() {
+            document.getElementById('modalDeploy').style.display = 'flex';
+            const body = document.getElementById('deployViewBody');
+            body.textContent = 'Loading…';
+            try {
+                const res = await fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' }).then(r => r.json());
+                if (!res.success || !res.deploy) { body.textContent = 'Unavailable.'; return; }
+                const d = res.deploy;
+                const teams = (d.teams || []).map(t => '<div style="display:flex;justify-content:space-between;margin:8px 0;"><span>' + String(t.name).replace(/</g,'') + '</span><strong>' + String(t.status).replace(/</g,'') + '</strong></div>').join('');
+                const act = (d.recent_activity || []).slice(0, 6).map(a => {
+                    const when = a.distribution_date ? new Date(String(a.distribution_date).replace(' ','T')).toLocaleString() : '';
+                    return '<div class="log-item" style="color:#fff;border-color:rgba(255,255,255,0.12);"><span>' + String(a.barangay_name) + ' · ' + a.quantity_distributed + ' ' + String(a.item_name) + '</span><span>' + when + '</span></div>';
+                }).join('');
+                body.innerHTML = '<div style="font-weight:700;margin-bottom:8px;">Teams</div>' + teams + '<div style="font-weight:700;margin:16px 0 8px;">Recent runs</div><div style="background:#172b4d;color:#fff;border-radius:8px;padding:8px 12px;">' + (act || '<div style="opacity:0.7;">No runs yet.</div>') + '</div>';
+            } catch (e) { body.textContent = 'Network error.'; }
+        }
+
         async function loadDistributions() {
             try {
-                const [listRes, statsRes] = await Promise.all([
+                const [listRes, statsRes, depRes] = await Promise.all([
                     fetch('../../php/api/relief.php?action=distribution_list', { credentials: 'include' }).then(r => r.json()),
-                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json())
+                    fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json()),
+                    fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' }).then(r => r.json())
                 ]);
+                window.__distRows = listRes.success && listRes.distributions ? listRes.distributions : [];
                 const tbody = document.getElementById('distributionTableBody');
                 if (listRes.success && listRes.distributions && listRes.distributions.length > 0) {
                     tbody.innerHTML = listRes.distributions.map(d => {
@@ -185,9 +280,25 @@
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">No distribution records yet.</td></tr>';
                 }
+                const cards = document.querySelectorAll('.truck-card');
+                if (depRes.success && depRes.deploy) {
+                    const d = depRes.deploy;
+                    if (cards[0]) {
+                        const v = document.getElementById('truckEnRoute');
+                        if (v) v.textContent = (d.en_route_trucks_estimate || 0) + ' convoys';
+                    }
+                    const hub = document.getElementById('syncLogs');
+                    if (hub && d.recent_activity && d.recent_activity.length) {
+                        hub.innerHTML = d.recent_activity.slice(0, 6).map(a => {
+                            const t = a.distribution_date ? new Date(String(a.distribution_date).replace(' ','T')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                            return '<div class="log-item"><span>' + a.barangay_name + ' — ' + a.quantity_distributed + ' ' + a.item_name + '</span><span>' + t + '</span></div>';
+                        }).join('');
+                    }
+                    const he = document.getElementById('hubEfficiency');
+                    if (he && d.readiness_score != null) he.textContent = d.readiness_score + '%';
+                }
                 if (statsRes.success && statsRes.statistics) {
                     const s = statsRes.statistics;
-                    const cards = document.querySelectorAll('.truck-card');
                     if (cards[1]) {
                         const v = cards[1].querySelector('div[style*="font-size: 20px"]');
                         if (v) v.textContent = (s.total_units_distributed || 0) + ' units';

@@ -56,6 +56,18 @@
                 </div>
 
                 <div>
+                    <div id="broadcast" class="card" style="margin-bottom: 16px;">
+                        <div class="card-title">Emergency broadcast (all barangay accounts)</div>
+                        <p style="font-size:12px;color:var(--text-subtle);margin-bottom:12px;">When active, the blue banner on barangay <strong>Notifications</strong> shows this advisory.</p>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+                            <input type="checkbox" id="ebActive"> Broadcast active
+                        </label>
+                        <div class="form-group"><label class="form-label">Title</label><input type="text" id="ebTitle" class="form-control"></div>
+                        <div class="form-group"><label class="form-label">Advisory body</label><textarea id="ebBody" class="form-control" rows="3"></textarea></div>
+                        <div class="form-group"><label class="form-label">Protocol / info URL</label><input type="url" id="ebUrl" class="form-control" placeholder="https://"></div>
+                        <button type="button" class="btn btn-primary btn-block" id="saveBroadcastBtn">Save broadcast</button>
+                    </div>
+
                     <div class="card">
                         <div class="card-title">Broadcast Categories</div>
                         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -131,7 +143,40 @@
                 document.getElementById('sendModal').style.display = 'none';
             });
             document.getElementById('confirmSendBtn').addEventListener('click', sendNotification);
+            document.getElementById('saveBroadcastBtn').addEventListener('click', saveBroadcast);
+            loadBroadcast();
         });
+
+        async function loadBroadcast() {
+            try {
+                const res = await fetch(api + '/notifications.php?action=emergency_broadcast', { credentials: 'include' });
+                const j = await res.json();
+                if (!j.success || !j.broadcast) return;
+                const b = j.broadcast;
+                document.getElementById('ebActive').checked = !!b.active;
+                document.getElementById('ebTitle').value = b.title || '';
+                document.getElementById('ebBody').value = b.body || '';
+                document.getElementById('ebUrl').value = b.protocol_url || '';
+            } catch (e) { console.warn(e); }
+        }
+
+        async function saveBroadcast() {
+            const body = {
+                active: document.getElementById('ebActive').checked,
+                title: document.getElementById('ebTitle').value,
+                body: document.getElementById('ebBody').value,
+                protocol_url: document.getElementById('ebUrl').value
+            };
+            const res = await fetch(api + '/notifications.php?action=emergency_broadcast_set', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            if (j.success) alert('Emergency broadcast saved.');
+            else alert(j.message || 'Save failed');
+        }
 
         async function loadRecipients() {
             const res = await fetch(api + '/notifications.php?action=list_recipients', { credentials: 'include' });
