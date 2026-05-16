@@ -54,7 +54,7 @@ class EvacuationCenter {
         if ($bid <= 0 || $name === '' || $cap < 0 || $occ < 0) {
             return ['success' => false, 'message' => 'Required fields missing'];
         }
-        $st = in_array($status, ['open', 'full', 'closed'], true) ? $status : 'open';
+        $st = $this->resolveStatus($status, $cap, $occ);
         $lat = $latitude === null || $latitude === '' ? 0.0 : (float) $latitude;
         $lon = $longitude === null || $longitude === '' ? 0.0 : (float) $longitude;
 
@@ -90,7 +90,7 @@ class EvacuationCenter {
         }
         $cap = (int) $capacity;
         $occ = (int) $current_occupancy;
-        $st = in_array($status, ['open', 'full', 'closed'], true) ? $status : 'open';
+        $st = $this->resolveStatus($status, $cap, $occ);
         $lat = $latitude === null || $latitude === '' ? 0.0 : (float) $latitude;
         $lon = $longitude === null || $longitude === '' ? 0.0 : (float) $longitude;
 
@@ -129,5 +129,18 @@ class EvacuationCenter {
             return ['success' => true, 'message' => 'Deleted'];
         }
         return ['success' => false, 'message' => 'Not found'];
+    }
+
+    private function resolveStatus($status, $capacity, $occupancy) {
+        $st = in_array($status, ['open', 'full', 'closed'], true) ? $status : 'open';
+        if ($st === 'closed') {
+            return 'closed';
+        }
+        $cap = max(0, (int) $capacity);
+        $occ = max(0, (int) $occupancy);
+        if ($cap > 0 && $occ >= $cap) {
+            return 'full';
+        }
+        return 'open';
     }
 }

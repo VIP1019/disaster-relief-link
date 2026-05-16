@@ -362,6 +362,20 @@ class WeatherAPI {
                 $row['precipitation_probability'] = $en['precipitation_probability'];
                 $row['flood_risk_score'] = $en['flood_risk_score'];
                 $row['flood_risk_level'] = $en['flood_risk_level'];
+            } else {
+                $fresh = $this->getWeatherData($b['latitude'], $b['longitude'], $bid);
+                if (empty($fresh['error'])) {
+                    $row['temperature'] = $fresh['temperature'];
+                    $row['humidity'] = $fresh['humidity'];
+                    $row['wind_speed'] = $fresh['wind_speed'];
+                    $row['weather_condition'] = $fresh['weather'];
+                    $row['api_call_time'] = date('Y-m-d H:i:s');
+                    $row['surface_pressure_hpa'] = $fresh['surface_pressure_hpa'] ?? null;
+                    $row['precipitation_mm'] = $fresh['precipitation_mm'] ?? null;
+                    $row['precipitation_probability'] = $fresh['precipitation_probability'] ?? null;
+                    $row['flood_risk_score'] = $fresh['flood_risk_score'] ?? null;
+                    $row['flood_risk_level'] = $fresh['flood_risk_level'] ?? null;
+                }
             }
 
             $rows[] = $row;

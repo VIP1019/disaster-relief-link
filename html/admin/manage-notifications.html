@@ -258,7 +258,7 @@
         }
 
         async function adminDeleteNotif(id) {
-            if (!confirm('Delete this notification?')) return;
+            if (!(await ReliefUI.confirm({ title: 'Delete notification?', message: 'Remove this notification from the log.', confirmText: 'Delete', danger: true }))) return;
             await fetch(api + '/notifications.php?action=delete', {
                 method: 'POST',
                 credentials: 'include',

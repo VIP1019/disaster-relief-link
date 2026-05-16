@@ -18,10 +18,34 @@ class ReliefManagement {
 
     // ==================== INVENTORY MANAGEMENT ====================
 
+    private function normalizeCategory($category) {
+        $allowed = ['Food', 'Water', 'NFIs', 'Medical', 'General'];
+        $value = trim((string) $category);
+        foreach ($allowed as $item) {
+            if (strcasecmp($value, $item) === 0) {
+                return $item;
+            }
+        }
+        return 'General';
+    }
+
+    public static function stockStatusForRow($quantity, $reorder_level = null) {
+        $qty = (int) $quantity;
+        $level = $reorder_level === null || $reorder_level === '' ? 50 : max(1, (int) $reorder_level);
+        if ($qty <= $level) {
+            return 'Critical';
+        }
+        if ($qty <= ($level * 2)) {
+            return 'Low';
+        }
+        return 'Stable';
+    }
+
     /**
      * Add new relief item to inventory
      */
     public function addInventoryItem($item_name, $category, $quantity, $unit_of_measure, $cost_per_unit, $description = '', $added_by) {
+        $category = $this->normalizeCategory($category);
         if (empty($item_name) || empty($category) || empty($quantity)) {
             return ['success' => false, 'message' => 'Required fields missing'];
         }
@@ -45,6 +69,7 @@ class ReliefManagement {
      * Update inventory item
      */
     public function updateInventoryItem($item_id, $item_name, $category, $quantity, $unit_of_measure, $cost_per_unit, $description = '') {
+        $category = $this->normalizeCategory($category);
         $update_query = "UPDATE {$this->inventory_table} 
                          SET item_name = ?, category = ?, quantity = ?, unit_of_measure = ?, cost_per_unit = ?, description = ?
                          WHERE id = ?";
@@ -81,7 +106,12 @@ class ReliefManagement {
         }
 
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($rows as &$row) {
+            $row['stock_status'] = self::stockStatusForRow($row['quantity'] ?? 0, $row['reorder_level'] ?? null);
+        }
+        unset($row);
+        return $rows;
     }
 
     /**
@@ -96,14 +126,21 @@ class ReliefManagement {
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param('i', $item_id);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            $row['stock_status'] = self::stockStatusForRow($row['quantity'] ?? 0, $row['reorder_level'] ?? null);
+        }
+        return $row;
     }
 
     /**
      * Get inventory summary by category
      */
     public function getInventorySummary() {
-        $query = "SELECT category, COUNT(*) as item_count, SUM(quantity) as total_quantity
+        $query = "SELECT category, COUNT(*) as item_count, SUM(quantity) as total_quantity,
+                         SUM(CASE WHEN quantity <= COALESCE(NULLIF(reorder_level, 0), 50) THEN 1 ELSE 0 END) AS critical_count,
+                         SUM(CASE WHEN quantity > COALESCE(NULLIF(reorder_level, 0), 50)
+                                   AND quantity <= (COALESCE(NULLIF(reorder_level, 0), 50) * 2) THEN 1 ELSE 0 END) AS low_count
                   FROM {$this->inventory_table}
                   GROUP BY category
                   ORDER BY category";
@@ -111,6 +148,45 @@ class ReliefManagement {
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getLowStockItems() {
+        $query = "SELECT *,
+                         CASE
+                            WHEN quantity <= COALESCE(NULLIF(reorder_level, 0), 50) THEN 'Critical'
+                            WHEN quantity <= (COALESCE(NULLIF(reorder_level, 0), 50) * 2) THEN 'Low'
+                            ELSE 'Stable'
+                         END AS stock_status
+                  FROM {$this->inventory_table}
+                  WHERE quantity <= (COALESCE(NULLIF(reorder_level, 0), 50) * 2)
+                  ORDER BY quantity ASC, item_name ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function createRestockRequest($admin_id, $item_id = null) {
+        $items = $this->getLowStockItems();
+        if ($item_id !== null && (int) $item_id > 0) {
+            $target = $this->getInventoryItem((int) $item_id);
+            $items = $target ? [$target] : [];
+        }
+        if (count($items) === 0) {
+            return ['success' => false, 'message' => 'No low-stock item found for restock request.'];
+        }
+        $names = array_map(function ($item) {
+            return ($item['item_name'] ?? 'Item') . ' (' . ($item['quantity'] ?? 0) . ' ' . ($item['unit_of_measure'] ?? 'units') . ' left)';
+        }, array_slice($items, 0, 8));
+        $details = 'Restock request: ' . implode(', ', $names);
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'system';
+        $stmt = $this->conn->prepare('INSERT INTO system_logs (action, user_id, description, ip_address) VALUES (?, ?, ?, ?)');
+        $action = 'restock_request';
+        $uid = (int) $admin_id;
+        $stmt->bind_param('siss', $action, $uid, $details, $ip);
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Restock request logged for ' . count($items) . ' item(s).', 'items' => $items];
+        }
+        return ['success' => false, 'message' => 'Could not log restock request.'];
     }
 
     public function getAllBarangays() {

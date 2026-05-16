@@ -103,7 +103,7 @@
                                 <button class="btn btn-sm btn-primary" style="font-size: 10px;">Request</button>
                             </div>
                         </div>
-                        <button class="btn btn-block" style="margin-top: 12px; font-size: 12px; border: 1px solid var(--border);">View All Alerts</button>
+                        <button type="button" class="btn btn-block" id="viewAlertsBtn" style="margin-top: 12px; font-size: 12px; border: 1px solid var(--border);">View All Alerts</button>
                     </div>
 
                     <div class="card">
@@ -115,6 +115,7 @@
                                     <option value="Food">Food</option>
                                     <option value="Water">Water</option>
                                     <option value="NFIs">NFIs</option>
+                                    <option value="Medical">Medical</option>
                                     <option value="General">General</option>
                                 </select>
                             </div>
@@ -143,7 +144,15 @@
             <h3 style="margin-bottom:16px;">Update item</h3>
             <input type="hidden" id="editInvId">
             <div class="form-group"><label class="form-label">Name</label><input type="text" id="editInvName" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Category</label><input type="text" id="editInvCat" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Category</label>
+                <select id="editInvCat" class="form-control">
+                    <option value="Food">Food</option>
+                    <option value="Water">Water</option>
+                    <option value="NFIs">NFIs</option>
+                    <option value="Medical">Medical</option>
+                    <option value="General">General</option>
+                </select>
+            </div>
             <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="editInvQty" class="form-control" min="0"></div>
             <div class="form-group"><label class="form-label">Unit</label><input type="text" id="editInvUnit" class="form-control"></div>
             <div class="form-group"><label class="form-label">Cost / unit (optional)</label><input type="number" id="editInvCost" class="form-control" min="0" step="0.01"></div>
@@ -171,13 +180,19 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'admin') return;
+            await loadInventory();
             loadSummary();
-            loadInventory();
+            loadAlerts();
             document.getElementById('saveInvBtn').addEventListener('click', saveInventoryEdit);
             document.getElementById('cancelInvBtn').addEventListener('click', () => { document.getElementById('invModal').style.display = 'none'; });
             document.getElementById('inventorySearch').addEventListener('input', filterInventoryTable);
             document.getElementById('deployResourcesBtn').addEventListener('click', () => {
                 document.getElementById('deployGuideModal').style.display = 'flex';
+            });
+            document.getElementById('viewAlertsBtn').addEventListener('click', () => {
+                document.getElementById('inventorySearch').value = '';
+                const rows = lastInventoryRows.filter(item => stockStatus(item) !== 'Stable');
+                document.getElementById('inventoryTableBody').innerHTML = rows.length ? rows.map(renderInvRow).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">No low-stock items.</td></tr>';
             });
             document.getElementById('deployGuideModal').addEventListener('click', (e) => {
                 if (e.target.id === 'deployGuideModal') document.getElementById('deployGuideModal').style.display = 'none';
@@ -185,6 +200,15 @@
         });
 
         let lastInventoryRows = [];
+
+        function stockStatus(item) {
+            const q = parseInt(item.quantity, 10) || 0;
+            const level = parseInt(item.reorder_level, 10) || 50;
+            if (item.stock_status) return item.stock_status;
+            if (q <= level) return 'Critical';
+            if (q <= level * 2) return 'Low';
+            return 'Stable';
+        }
 
         function filterInventoryTable() {
             const q = (document.getElementById('inventorySearch').value || '').trim().toLowerCase();
@@ -202,9 +226,10 @@
 
         function renderInvRow(item) {
             const q = parseInt(item.quantity, 10) || 0;
-            const stockPercent = Math.min((q / 1000) * 100, 100);
-            const status = stockPercent > 50 ? 'Stable' : (stockPercent > 20 ? 'Moderate' : 'Critical');
-            const badgeClass = status === 'Stable' ? 'success' : (status === 'Moderate' ? 'warning' : 'danger');
+            const level = parseInt(item.reorder_level, 10) || 50;
+            const stockPercent = Math.min((q / Math.max(level * 3, 1)) * 100, 100);
+            const status = stockStatus(item);
+            const badgeClass = status === 'Stable' ? 'success' : (status === 'Low' ? 'warning' : 'danger');
             const cat = item.category || 'General';
             return `
                 <tr>
@@ -237,7 +262,7 @@
                 data.summary.forEach(s => { total += parseInt(s.total_quantity, 10) || 0; });
                 const el = document.getElementById('totalUnits');
                 if (el) el.textContent = total.toLocaleString();
-                const low = data.summary.filter(s => (parseInt(s.total_quantity, 10) || 0) < 50).length;
+                const low = lastInventoryRows.filter(item => stockStatus(item) !== 'Stable').length;
                 const lc = document.getElementById('lowStockCount');
                 if (lc) lc.textContent = String(low).padStart(2, '0');
             } catch (e) { console.error(e); }
@@ -250,8 +275,41 @@
                 if (data.success && data.inventory) {
                     lastInventoryRows = data.inventory;
                     filterInventoryTable();
+                    renderAlerts(lastInventoryRows.filter(item => stockStatus(item) !== 'Stable'));
                 }
             } catch (error) { console.error('Inventory error:', error); }
+        }
+
+        async function loadAlerts() {
+            try {
+                const res = await fetch(api + '/relief.php?action=low_stock', { credentials: 'include' });
+                const data = await res.json();
+                renderAlerts(data.success ? (data.items || []) : []);
+            } catch (e) {
+                renderAlerts([]);
+            }
+        }
+
+        function renderAlerts(items) {
+            const box = document.getElementById('alertsContainer');
+            const rows = (items || []).slice(0, 5);
+            if (!rows.length) {
+                box.innerHTML = '<p style="font-size:13px;color:var(--text-subtle);">No low-stock alerts.</p>';
+                return;
+            }
+            box.innerHTML = rows.map(item => {
+                const status = stockStatus(item);
+                const cls = status === 'Critical' ? 'critical' : '';
+                const color = status === 'Critical' ? 'var(--danger)' : 'var(--warning)';
+                return `<div class="alert-item ${cls}">
+                    <div style="flex: 1;">
+                        <div style="font-size: 13px; font-weight: 700;">${String(item.item_name || '').replace(/</g, '')}</div>
+                        <div style="font-size: 11px; color: var(--text-subtle);">${String(item.category || 'General').replace(/</g, '')} · reorder at ${item.reorder_level || 50}</div>
+                        <div style="font-size: 11px; color: ${color}; font-weight: 700; margin-top: 4px;">${status.toUpperCase()} · ${item.quantity || 0} ${item.unit_of_measure || 'units'} LEFT</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" style="font-size: 10px;" onclick="requestRestock(${item.id})">Request</button>
+                </div>`;
+            }).join('');
         }
 
         async function openInvEdit(id) {
@@ -288,13 +346,14 @@
             const j = await res.json();
             if (j.success) {
                 document.getElementById('invModal').style.display = 'none';
+                await loadInventory();
                 loadSummary();
-                loadInventory();
+                loadAlerts();
             } else alert(j.message || 'Update failed');
         }
 
         async function deleteInv(id) {
-            if (!confirm('Delete this inventory row? Only allowed if it has no distribution history.')) return;
+            if (!(await ReliefUI.confirm({ title: 'Delete inventory row?', message: 'Only inventory rows with no distribution history can be deleted.', confirmText: 'Delete', danger: true }))) return;
             const res = await fetch(api + '/relief.php?action=inventory_delete', {
                 method: 'POST',
                 credentials: 'include',
@@ -303,8 +362,9 @@
             });
             const j = await res.json();
             if (j.success) {
+                await loadInventory();
                 loadSummary();
-                loadInventory();
+                loadAlerts();
             } else alert(j.message || 'Delete failed');
         }
 
@@ -331,14 +391,32 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('Item added to global registry.');
+                    await ReliefUI.alert('Item added to global registry.');
+                    await loadInventory();
                     loadSummary();
-                    loadInventory();
+                    loadAlerts();
                     e.target.reset();
                     document.getElementById('itemUnit').value = 'unit';
                 } else alert(data.message || 'Error');
             } catch (error) { alert('Error updating inventory.'); }
         });
+
+        async function requestRestock(itemId) {
+            const ok = await ReliefUI.confirm({
+                title: 'Request restock?',
+                message: itemId ? 'Submit a backend restock request for this item.' : 'Submit a backend restock request for all low-stock items.',
+                confirmText: 'Request'
+            });
+            if (!ok) return;
+            const res = await fetch(api + '/relief.php?action=restock_request', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(itemId ? { item_id: itemId } : {})
+            });
+            const data = await res.json();
+            await ReliefUI.alert(data.message || (data.success ? 'Restock request submitted.' : 'Request failed.'));
+        }
     </script>
 </body>
 </html>

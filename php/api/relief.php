@@ -110,6 +110,30 @@ try {
             }
             break;
 
+        case 'low_stock':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $items = $relief->getLowStockItems();
+                http_response_code(200);
+                echo json_encode(['success' => true, 'items' => $items]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'restock_request':
+            if (in_array($request_method, ['POST', 'PUT'], true) && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $item_id = isset($data['item_id']) ? (int) $data['item_id'] : null;
+                $result = $relief->createRestockRequest((int) $current_user['id'], $item_id);
+                http_response_code($result['success'] ? 201 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
         case 'barangays_list':
             if ($request_method === 'GET' && Auth::isAdmin()) {
                 $rows = $relief->getAllBarangays();

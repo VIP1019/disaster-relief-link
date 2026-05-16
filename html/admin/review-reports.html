@@ -37,9 +37,9 @@
                 <div class="card-title">
                     <span>Active Incident Reports</span>
                     <div style="display: flex; gap: 12px; font-size: 11px;">
-                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--primary);"></div> Pending</span>
-                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--success);"></div> Approved</span>
-                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--danger);"></div> Critical</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--warning);"></div> Submitted</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--success);"></div> Reviewed</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><div class="dot" style="background: var(--danger);"></div> Critical severity</span>
                     </div>
                 </div>
                 <div class="table-container">
@@ -49,6 +49,7 @@
                                 <th>Report ID</th>
                                 <th>Barangay</th>
                                 <th>Disaster Type</th>
+                                <th>Submitted</th>
                                 <th>Status</th>
                                 <th>Active Review</th>
                                 <th>Action</th>
@@ -56,7 +57,7 @@
                         </thead>
                         <tbody id="reportsTableBody">
                             <!-- Populated by JS -->
-                            <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-subtle);">Synchronizing with field units...</td></tr>
+                            <tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-subtle);">Synchronizing with field units...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -100,6 +101,23 @@
             return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
         }
 
+        function statusBadgeClass(status) {
+            const s = String(status || '').toLowerCase();
+            if (s === 'submitted') return 'warning';
+            if (s === 'reviewed') return 'success';
+            if (s === 'prioritized') return 'info';
+            if (s === 'relief_distributed') return 'success';
+            return 'info';
+        }
+
+        function reviewDotColor(r) {
+            if (String(r.severity_level || '').toLowerCase() === 'critical') return 'var(--danger)';
+            const s = String(r.status || '').toLowerCase();
+            if (s === 'submitted') return 'var(--warning)';
+            if (s === 'reviewed' || s === 'relief_distributed') return 'var(--success)';
+            return 'var(--primary)';
+        }
+
         async function loadReports() {
             try {
                 const q = pendingOnly ? '&status=submitted' : '';
@@ -113,10 +131,11 @@
                             <td><button type="button" class="report-id" style="cursor:pointer;border:none;" onclick="openReportDetail(${r.id})">REP-2024-${String(r.id).padStart(4, '0')}</button></td>
                             <td><div style="font-weight: 600;">${esc(r.barangay_name)}</div><div style="font-size: 11px; color: var(--text-subtle);">Daet, Camarines Norte</div></td>
                             <td><span class="badge badge-info">${esc(String(r.disaster_type || '').toUpperCase())}</span></td>
-                            <td><span class="badge badge-${r.status === 'submitted' ? 'warning' : 'success'}">${esc(String(r.status || '').replace('_', ' ').toUpperCase())}</span></td>
+                            <td style="font-size:12px;">${esc(r.submitted_at ? new Date(String(r.submitted_at).replace(' ', 'T')).toLocaleString() : '-')}</td>
+                            <td><span class="badge badge-${statusBadgeClass(r.status)}">${esc(String(r.status || '').replace('_', ' ').toUpperCase())}</span></td>
                             <td>
                                 <div class="assessment-badge">
-                                    <div class="dot" style="background: ${r.severity_level === 'critical' ? 'var(--danger)' : 'var(--primary)'};"></div>
+                                    <div class="dot" style="background: ${reviewDotColor(r)};"></div>
                                     <span>${esc(String(r.severity_level || '').toUpperCase())} ASSESSMENT</span>
                                 </div>
                                 <div style="font-size:11px;color:var(--text-subtle);margin-top:4px;">
@@ -279,7 +298,7 @@
         }
 
         async function rejectReport(id) {
-            if (!confirm('Return this report to submitted status for the barangay to revise?')) return;
+            if (!(await ReliefUI.confirm({ title: 'Return report?', message: 'Return this report to submitted status for the barangay to revise.', confirmText: 'Return report' }))) return;
             try {
                 const response = await fetch('../../php/api/reports.php?action=update_status', {
                     method: 'PUT',
@@ -296,7 +315,7 @@
         }
 
         async function approveReport(id) {
-            if (!confirm('Verify and approve this disaster report?')) return;
+            if (!(await ReliefUI.confirm({ title: 'Verify report?', message: 'Mark this disaster report as reviewed and add it to the priority workflow.', confirmText: 'Verify' }))) return;
             try {
                 const response = await fetch('../../php/api/reports.php?action=update_status', {
                     method: 'PUT',

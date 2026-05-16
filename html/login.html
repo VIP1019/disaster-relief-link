@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ReliefLink - Login</title>
     <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .password-field { position: relative; }
+        .password-field .form-control { padding-right: 46px; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; background: transparent; color: var(--text-subtle); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .password-toggle:hover { background: #ebecf0; color: var(--text-main); }
+        .password-toggle svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+    </style>
 </head>
 <body class="auth-page">
     <div class="auth-container animate-fade-in">
@@ -25,7 +32,12 @@
                         <label class="form-label" for="password">Password</label>
                         <a href="#" style="font-size: 11px; margin-bottom: 4px; font-weight: 600;">Forgot Access Code?</a>
                     </div>
-                    <input type="password" id="password" name="password" class="form-control" required placeholder="••••••••••••">
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" class="form-control" required placeholder="••••••••••••">
+                        <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" title="Show password">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
@@ -55,6 +67,15 @@
     </div>
 
     <script>
+        document.getElementById('passwordToggle').addEventListener('click', () => {
+            const input = document.getElementById('password');
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            const label = showing ? 'Show password' : 'Hide password';
+            document.getElementById('passwordToggle').setAttribute('aria-label', label);
+            document.getElementById('passwordToggle').setAttribute('title', label);
+        });
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');

@@ -85,6 +85,90 @@
     });
   }
 
+  function ensureModal() {
+    var existing = document.getElementById('reliefUiModal');
+    if (existing) return existing;
+
+    var style = document.createElement('style');
+    style.textContent =
+      '.relief-ui-overlay{position:fixed;inset:0;background:rgba(9,30,66,.48);z-index:3000;display:none;align-items:center;justify-content:center;padding:24px;}' +
+      '.relief-ui-overlay.open{display:flex;}' +
+      '.relief-ui-box{width:100%;max-width:420px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:22px;}' +
+      '.relief-ui-title{font-size:17px;font-weight:700;margin-bottom:8px;color:var(--text-main);}' +
+      '.relief-ui-message{font-size:13px;color:var(--text-subtle);line-height:1.5;white-space:pre-wrap;}' +
+      '.relief-ui-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}' +
+      '.relief-ui-actions .btn{min-width:92px;}';
+    document.head.appendChild(style);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'reliefUiModal';
+    overlay.className = 'relief-ui-overlay';
+    overlay.innerHTML =
+      '<div class="relief-ui-box" role="dialog" aria-modal="true" aria-labelledby="reliefUiTitle">' +
+      '<div class="relief-ui-title" id="reliefUiTitle"></div>' +
+      '<div class="relief-ui-message" id="reliefUiMessage"></div>' +
+      '<div class="relief-ui-actions">' +
+      '<button type="button" class="btn" id="reliefUiCancel" style="border:1px solid var(--border);background:#fff;">Cancel</button>' +
+      '<button type="button" class="btn btn-primary" id="reliefUiConfirm">Confirm</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function modalConfirm(options) {
+    var cfg = typeof options === 'string' ? { message: options } : (options || {});
+    var overlay = ensureModal();
+    var title = overlay.querySelector('#reliefUiTitle');
+    var msg = overlay.querySelector('#reliefUiMessage');
+    var cancel = overlay.querySelector('#reliefUiCancel');
+    var confirm = overlay.querySelector('#reliefUiConfirm');
+    title.textContent = cfg.title || 'Confirm action';
+    msg.textContent = cfg.message || 'Continue?';
+    cancel.textContent = cfg.cancelText || 'Cancel';
+    cancel.style.display = cfg.cancelText === '' ? 'none' : '';
+    confirm.textContent = cfg.confirmText || 'Confirm';
+    confirm.className = 'btn ' + (cfg.danger ? '' : 'btn-primary');
+    if (cfg.danger) {
+      confirm.style.background = 'var(--danger)';
+      confirm.style.color = '#fff';
+    } else {
+      confirm.style.background = '';
+      confirm.style.color = '';
+    }
+    overlay.classList.add('open');
+
+    return new Promise(function (resolve) {
+      function done(value) {
+        overlay.classList.remove('open');
+        cancel.style.display = '';
+        cancel.removeEventListener('click', cancelFn);
+        confirm.removeEventListener('click', confirmFn);
+        overlay.removeEventListener('click', overlayFn);
+        document.removeEventListener('keydown', keyFn);
+        resolve(value);
+      }
+      function cancelFn() { done(false); }
+      function confirmFn() { done(true); }
+      function overlayFn(e) { if (e.target === overlay) done(false); }
+      function keyFn(e) { if (e.key === 'Escape') done(false); }
+      cancel.addEventListener('click', cancelFn);
+      confirm.addEventListener('click', confirmFn);
+      overlay.addEventListener('click', overlayFn);
+      document.addEventListener('keydown', keyFn);
+      confirm.focus();
+    });
+  }
+
+  function modalAlert(options) {
+    var cfg = typeof options === 'string' ? { message: options } : (options || {});
+    return modalConfirm({
+      title: cfg.title || 'Notice',
+      message: cfg.message || '',
+      confirmText: cfg.confirmText || 'OK',
+      cancelText: '',
+    });
+  }
+
   async function mount() {
     var mount = document.getElementById('relief-sidebar-mount');
     if (!mount) return null;
@@ -135,4 +219,5 @@
   }
 
   window.ReliefSidebar = { mount: mount, getApiBase: getApiBase };
+  window.ReliefUI = { confirm: modalConfirm, alert: modalAlert };
 })();

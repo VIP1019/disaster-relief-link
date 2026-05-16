@@ -189,7 +189,7 @@
         }
 
         async function deleteReport(id) {
-            if (!confirm('Delete this submitted report permanently?')) return;
+            if (!(await ReliefUI.confirm({ title: 'Delete report?', message: 'Delete this submitted report permanently?', confirmText: 'Delete', danger: true }))) return;
             const res = await fetch(api + '/reports.php?action=delete_own', {
                 method: 'POST',
                 credentials: 'include',

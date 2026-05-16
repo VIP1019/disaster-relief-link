@@ -13,6 +13,7 @@
         .priority-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
         .priority-item:last-child { border-bottom: none; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+        .layer-toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-subtle); }
     </style>
 </head>
 <body>
@@ -100,7 +101,7 @@
                         <!-- Populated by JS -->
                         <div style="text-align: center; padding: 20px; color: var(--text-subtle);">Loading inventory...</div>
                     </div>
-                    <button class="btn btn-block" style="margin-top: 16px; border: 1px solid var(--border); background: #f4f5f7; font-size: 12px; font-weight: 600;">Restock Request</button>
+                    <button type="button" class="btn btn-block" id="restockRequestBtn" style="margin-top: 16px; border: 1px solid var(--border); background: #f4f5f7; font-size: 12px; font-weight: 600;">Restock Request</button>
                 </div>
             </div>
 
@@ -110,9 +111,13 @@
                     <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
                         <div>
                             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-subtle);">Live hazard feed</div>
-                            <div style="font-size: 14px; font-weight: 700;">Incident map + barangay weather</div>
+                            <div style="font-size: 14px; font-weight: 700;">Incident map with optional weather layer</div>
                         </div>
-                        <a href="weather-monitoring.html" class="btn btn-sm btn-primary">Weather dashboard</a>
+                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                            <label class="layer-toggle"><input type="checkbox" id="incidentLayerToggle" checked> Incidents</label>
+                            <label class="layer-toggle"><input type="checkbox" id="weatherLayerToggle"> Weather</label>
+                            <a href="weather-monitoring.html" class="btn btn-sm btn-primary">Weather dashboard</a>
+                        </div>
                     </div>
                     <div id="hazardMap" style="height: 320px;"></div>
                 </div>
@@ -135,10 +140,17 @@
     <script>
         let hazardMap = null;
         let hazardLayer = null;
+        let incidentLayer = null;
+        let weatherLayer = null;
+        let cachedReports = [];
+        let cachedWeather = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'admin') return;
+            document.getElementById('restockRequestBtn').addEventListener('click', requestRestock);
+            document.getElementById('incidentLayerToggle').addEventListener('change', () => renderHazardMap(cachedReports, cachedWeather));
+            document.getElementById('weatherLayerToggle').addEventListener('change', () => renderHazardMap(cachedReports, cachedWeather));
             loadDashboardData();
         });
 
@@ -164,6 +176,8 @@
                 if (reports.success) {
                     document.getElementById('activeReports').textContent = reports.reports.filter(r => r.status !== 'relief_distributed').length;
                     document.getElementById('affectedBarangays').textContent = new Set(reports.reports.map(r => r.barangay_id)).size;
+                    cachedReports = reports.reports || [];
+                    cachedWeather = weather.success ? weather.rows : [];
                     renderHazardMap(reports.reports || [], weather.success ? weather.rows : []);
                 }
 
@@ -200,6 +214,7 @@
             }
             hazardLayer.clearLayers();
             const pts = [];
+            if (document.getElementById('incidentLayerToggle').checked) {
             reportList.forEach(r => {
                 const lat = parseFloat(r.map_latitude);
                 const lng = parseFloat(r.map_longitude);
@@ -211,6 +226,8 @@
                 m.addTo(hazardLayer);
                 pts.push([lat, lng]);
             });
+            }
+            if (document.getElementById('weatherLayerToggle').checked) {
             (weatherRows || []).forEach(w => {
                 const lat = w.latitude, lon = w.longitude;
                 if (lat == null || lon == null) return;
@@ -221,6 +238,7 @@
                 L.circleMarker([+lat, +lon], { radius: 5, color: '#00a3bf', fillColor: '#00c7e6', fillOpacity: 0.35, weight: 1 })
                     .bindPopup(pop).addTo(hazardLayer);
             });
+            }
             if (pts.length) {
                 hazardMap.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 12 });
             } else {
@@ -262,6 +280,23 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        async function requestRestock() {
+            const ok = await ReliefUI.confirm({
+                title: 'Submit restock request?',
+                message: 'This will log a backend request for current low-stock inventory items.',
+                confirmText: 'Submit request'
+            });
+            if (!ok) return;
+            const res = await fetch('../../php/api/relief.php?action=restock_request', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            const data = await res.json();
+            await ReliefUI.alert(data.message || (data.success ? 'Restock request submitted.' : 'Restock request failed.'));
         }
     </script>
 </body>
