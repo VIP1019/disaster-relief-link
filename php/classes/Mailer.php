@@ -1,58 +1,73 @@
 <?php
 /**
- * Custom Mailtrap REST API Integration
- * Fulfills strict "Third-Party API Integration" requirement using cURL and JSON payloads.
+ * Custom Mailtrap SMTP Integration API
+ * Native PHP implementation (Dependency-Free)
  */
 class Mailer {
-    // Extracted from your Mailtrap URL (mailtrap.io/sandboxes/4635098/...)
-    private static $inbox_id = "4635098"; 
+    private static $host = "sandbox.smtp.mailtrap.io";
+    private static $port = 2525;
     
-    // REPLACE THIS WITH YOUR MAILTRAP API TOKEN
-    private static $api_token = "e4aeb708ce035e1b828c461cb3b70cc6";
+    // YOUR WORKING MAILTRAP CREDENTIALS
+    private static $username = "11f6e0e09802f3"; 
+    private static $password = "1e8c72db1edb09"; 
 
     public static function sendEmail($toEmail, $toName, $subject, $htmlMessage) {
-        if (self::$api_token === 'PASTE_YOUR_API_TOKEN_HERE') {
-            error_log("Mailtrap API token missing. Email skipped.");
+        if (self::$username === 'PASTE_YOUR_USERNAME_HERE') {
+            error_log("Mailtrap API credentials missing. Email skipped.");
             return false;
         }
 
-        // Mailtrap Sandbox REST API Endpoint
-        $url = "https://sandbox.api.mailtrap.io/api/send/" . self::$inbox_id;
+        // Native PHP Socket Connection
+        $socket = fsockopen(self::$host, self::$port, $errno, $errstr, 10);
+        if (!$socket) {
+            error_log("Failed to connect to Mailtrap API: $errstr ($errno)");
+            return false;
+        }
 
-        // Construct the JSON Payload exactly as the API requires
-        $data = [
-            "from" => ["email" => "no-reply@relieflink.gov.ph", "name" => "ReliefLink Command"],
-            "to" => [
-                ["email" => $toEmail, "name" => $toName]
-            ],
-            "subject" => $subject,
-            "html" => $htmlMessage
-        ];
+        $res = function($socket) {
+            $data = "";
+            while($str = fgets($socket, 515)) {
+                $data .= $str;
+                if(substr($str,3,1) == " ") break;
+            }
+            return $data;
+        };
 
-        // Initialize cURL for the HTTP POST Request
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $res($socket); // read greeting
         
-        // Pass the API Bearer Token in the headers
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer " . self::$api_token,
-            "Content-Type: application/json"
-        ]);
+        fputs($socket, "EHLO localhost\r\n");
+        $res($socket);
+        
+        fputs($socket, "AUTH LOGIN\r\n");
+        $res($socket);
+        fputs($socket, base64_encode(self::$username) . "\r\n");
+        $res($socket);
+        fputs($socket, base64_encode(self::$password) . "\r\n");
+        $res($socket);
+        
+        fputs($socket, "MAIL FROM: <no-reply@relieflink.gov.ph>\r\n");
+        $res($socket);
+        
+        fputs($socket, "RCPT TO: <$toEmail>\r\n");
+        $res($socket);
+        
+        fputs($socket, "DATA\r\n");
+        $res($socket);
+        
+        $headers = "From: ReliefLink Command <no-reply@relieflink.gov.ph>\r\n";
+        $headers .= "To: $toName <$toEmail>\r\n";
+        $headers .= "Subject: $subject\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
 
-        // Execute the API Call
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($http_code >= 200 && $http_code < 300) {
-            return true;
-        } else {
-            error_log("Mailtrap API Error: " . $response . " | cURL Error: " . $error);
-            return false;
-        }
+        $body = $headers . "\r\n" . $htmlMessage . "\r\n.\r\n";
+        fputs($socket, $body);
+        $res($socket);
+        
+        fputs($socket, "QUIT\r\n");
+        fclose($socket);
+        
+        return true;
     }
 }
 ?>
