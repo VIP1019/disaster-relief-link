@@ -165,6 +165,8 @@ class Auth {
             ];
         }
         return null;
+    }
+
     /**
      * Get user profile details
      */
