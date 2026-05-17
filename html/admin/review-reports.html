@@ -129,7 +129,13 @@
                 tbody.innerHTML = reportRows.map(r => `
                         <tr>
                             <td><button type="button" class="report-id" style="cursor:pointer;border:none;" onclick="openReportDetail(${r.id})">REP-2024-${String(r.id).padStart(4, '0')}</button></td>
-                            <td><div style="font-weight: 600;">${esc(r.barangay_name)}</div><div style="font-size: 11px; color: var(--text-subtle);">Daet, Camarines Norte</div></td>
+                            <td>
+                                <div style="font-weight: 600;">${esc(r.barangay_name)}</div>
+                                <div style="font-size: 11px; color: var(--text-subtle); line-height: 1.4; margin-top: 2px;">
+                                    Families: <strong>${esc(r.affected_families)}</strong> · Damaged: <strong>${esc(r.damaged_houses)}</strong><br>
+                                    Injured/Deaths: <strong style="color: ${(+r.injured_count > 0 || +r.death_count > 0) ? 'var(--danger)' : 'inherit'};">${esc(r.injured_count)}/${esc(r.death_count)}</strong>
+                                </div>
+                            </td>
                             <td><span class="badge badge-info">${esc(String(r.disaster_type || '').toUpperCase())}</span></td>
                             <td style="font-size:12px;">${esc(r.submitted_at ? new Date(String(r.submitted_at).replace(' ', 'T')).toLocaleString() : '-')}</td>
                             <td><span class="badge badge-${statusBadgeClass(r.status)}">${esc(String(r.status || '').replace('_', ' ').toUpperCase())}</span></td>
