@@ -436,5 +436,97 @@ class ReliefManagement {
         $stmt->bind_param('i', $report_id);
         $stmt->execute();
     }
+
+    /**
+     * Map structured request keys to a warehouse inventory row.
+     */
+    public function findInventoryForRequestType($type) {
+        $type = strtolower((string) $type);
+        if ($type === 'food') {
+            $q = "SELECT * FROM {$this->inventory_table} WHERE category = 'Food' AND quantity > 0 ORDER BY quantity DESC, id ASC LIMIT 1";
+        } elseif ($type === 'hygiene') {
+            $q = "SELECT * FROM {$this->inventory_table} WHERE category = 'NFIs' AND (item_name LIKE '%Hygiene%' OR item_name LIKE '%hygiene%') AND quantity > 0 ORDER BY quantity DESC LIMIT 1";
+            $res = $this->conn->query($q);
+            if ($res && $res->num_rows > 0) {
+                return $res->fetch_assoc();
+            }
+            $q = "SELECT * FROM {$this->inventory_table} WHERE category = 'NFIs' AND quantity > 0 ORDER BY quantity DESC LIMIT 1";
+        } elseif ($type === 'water') {
+            $q = "SELECT * FROM {$this->inventory_table} WHERE category = 'Water' AND quantity > 0 ORDER BY quantity DESC LIMIT 1";
+        } else {
+            return null;
+        }
+        $res = $this->conn->query($q);
+        return $res && $res->num_rows > 0 ? $res->fetch_assoc() : null;
+    }
+
+    /**
+     * Deduct inventory lines from structured report requests; records distributions.
+     *
+     * @param array<string, int> $requests food, hygiene, water quantities
+     */
+    public function deployStructuredRequests($report_id, $barangay_id, array $requests, $admin_user_id) {
+        $lines = [];
+        $labels = ['food' => 'Food packs', 'hygiene' => 'Hygiene kits', 'water' => 'Drinking water'];
+        foreach (['food', 'hygiene', 'water'] as $key) {
+            $qty = (int) ($requests[$key] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+            $item = $this->findInventoryForRequestType($key);
+            if (!$item) {
+                return [
+                    'success' => false,
+                    'message' => 'No stock available for ' . ($labels[$key] ?? $key) . ' in central inventory.',
+                ];
+            }
+            $avail = (int) $item['quantity'];
+            if ($qty > $avail) {
+                $unit = $item['unit_of_measure'] ?: 'units';
+                return [
+                    'success' => false,
+                    'message' => sprintf(
+                        'Insufficient stock for %s. Central warehouse only has %d %s remaining; requested %d.',
+                        $labels[$key],
+                        $avail,
+                        $unit,
+                        $qty
+                    ),
+                    'shortage' => ['type' => $key, 'available' => $avail, 'requested' => $qty],
+                ];
+            }
+            $lines[] = ['inventory_id' => (int) $item['id'], 'quantity' => $qty, 'label' => $labels[$key]];
+        }
+
+        if (count($lines) === 0) {
+            return ['success' => false, 'message' => 'No supply quantities were requested (food, hygiene, or water).'];
+        }
+
+        $deductions = [];
+        foreach ($lines as $line) {
+            $out = $this->recordDistribution(
+                $report_id,
+                $barangay_id,
+                $line['inventory_id'],
+                $line['quantity'],
+                $admin_user_id,
+                'Auto-deploy from structured report requests'
+            );
+            if (!$out['success']) {
+                return $out;
+            }
+            $deductions[] = [
+                'label' => $line['label'],
+                'quantity' => $line['quantity'],
+                'inventory_id' => $line['inventory_id'],
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Deployed ' . count($deductions) . ' inventory line(s) and deducted stock.',
+            'deductions' => $deductions,
+        ];
+    }
 }
 ?>

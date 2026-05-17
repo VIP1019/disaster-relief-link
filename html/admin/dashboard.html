@@ -111,7 +111,7 @@
                     <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
                         <div>
                             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-subtle);">Live hazard feed</div>
-                            <div style="font-size: 14px; font-weight: 700;">Incident map with optional weather layer</div>
+                            <div style="font-size: 14px; font-weight: 700;">Incident map — shift+click to add road hazards</div>
                         </div>
                         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                             <label class="layer-toggle"><input type="checkbox" id="incidentLayerToggle" checked> Incidents</label>
@@ -136,6 +136,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="../js/relief-ajax.js"></script>
+    <script src="../js/report-structured.js"></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
         let hazardMap = null;
@@ -144,6 +146,7 @@
         let weatherLayer = null;
         let cachedReports = [];
         let cachedWeather = [];
+        let cachedHazards = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
@@ -164,13 +167,14 @@
 
         async function loadDashboardData() {
             try {
-                const [reports, priority, inventory, stats, deploy, weather] = await Promise.all([
+                const [reports, priority, inventory, stats, deploy, weather, hazards] = await Promise.all([
                     fetch('../../php/api/reports.php?action=list_all', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/priority.php?action=get_rankings', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/relief.php?action=inventory_summary', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/relief.php?action=distribution_stats', { credentials: 'include' }).then(r => r.json()),
                     fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' }).then(r => r.json()),
-                    fetch('../../php/api/weather.php?action=barangay_dashboard', { credentials: 'include' }).then(r => r.json())
+                    fetch('../../php/api/weather.php?action=barangay_dashboard', { credentials: 'include' }).then(r => r.json()),
+                    ReliefAjax.hazards.list(),
                 ]);
 
                 if (reports.success) {
@@ -178,6 +182,7 @@
                     document.getElementById('affectedBarangays').textContent = new Set(reports.reports.map(r => r.barangay_id)).size;
                     cachedReports = reports.reports || [];
                     cachedWeather = weather.success ? weather.rows : [];
+                    cachedHazards = hazards.success ? (hazards.hazards || []) : [];
                     renderHazardMap(reports.reports || [], weather.success ? weather.rows : []);
                 }
 
@@ -211,6 +216,27 @@
                 hazardMap = L.map('hazardMap', { scrollWheelZoom: false }).setView(center, 11);
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' }).addTo(hazardMap);
                 hazardLayer = L.layerGroup().addTo(hazardMap);
+                hazardMap.on('click', async (e) => {
+                    if (!e.originalEvent.shiftKey) return;
+                    const type = prompt('Hazard type: landslide, flood, or blocked_road', 'blocked_road');
+                    if (!type) return;
+                    const label = prompt('Short label (optional)', '') || '';
+                    const res = await ReliefAjax.hazards.save({
+                        hazard_type: type,
+                        latitude: e.latlng.lat,
+                        longitude: e.latlng.lng,
+                        label,
+                    });
+                    if (res.success) {
+                        const hz = await ReliefAjax.hazards.list();
+                        if (hz.success) {
+                            cachedHazards = hz.hazards || [];
+                            renderHazardMap(cachedReports, cachedWeather);
+                        }
+                    } else {
+                        alert(res.message || 'Could not save hazard');
+                    }
+                });
             }
             hazardLayer.clearLayers();
             const pts = [];
@@ -225,8 +251,31 @@
                 m.bindPopup('<strong>' + String(r.barangay_name || '') + '</strong><br>' + String(r.disaster_type || '') + ' · ' + String(r.severity_level || '') + '<br><small>Status: ' + String(r.status || '') + '</small>');
                 m.addTo(hazardLayer);
                 pts.push([lat, lng]);
+                try {
+                    const parsed = ReliefStructuredReport.parseDescription(r.description || '');
+                    if (parsed.isStructured && String(parsed.lifelines.road || '').toLowerCase().includes('block')) {
+                        L.marker([lat, lng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: '<div style="background:#de350b;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:4px;white-space:nowrap;">Road blocked</div>',
+                                iconAnchor: [40, 20],
+                            }),
+                        }).bindPopup('Reported road blocked at ' + String(r.barangay_name || '')).addTo(hazardLayer);
+                    }
+                } catch (err) { /* ignore */ }
             });
             }
+            const hazardColors = { landslide: '#de350b', flood: '#0052cc', blocked_road: '#ff8b00' };
+            (cachedHazards || []).forEach(h => {
+                const lat = parseFloat(h.latitude);
+                const lng = parseFloat(h.longitude);
+                if (isNaN(lat) || isNaN(lng)) return;
+                const c = hazardColors[h.hazard_type] || '#6554c0';
+                L.circleMarker([lat, lng], { radius: 9, color: c, fillColor: c, fillOpacity: 0.7, weight: 2 })
+                    .bindPopup('<strong>' + String(h.hazard_type || 'hazard').replace('_', ' ') + '</strong><br>' + String(h.label || '') + '<br><small>Shift+click map to add more</small>')
+                    .addTo(hazardLayer);
+                pts.push([lat, lng]);
+            });
             if (document.getElementById('weatherLayerToggle').checked) {
             (weatherRows || []).forEach(w => {
                 const lat = w.latitude, lon = w.longitude;

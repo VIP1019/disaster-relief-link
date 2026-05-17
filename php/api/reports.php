@@ -230,6 +230,46 @@ try {
             }
             break;
 
+        case 'deploy_aid':
+            if ($request_method === 'POST' && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $result = $report->deployAidFromReport($rid, (int) $current_user['id']);
+                if ($result['success']) {
+                    $report_data = $report->getReportById($rid);
+                    if ($report_data) {
+                        $notification->notifyReportStatusChange($report_data['user_id'], $rid, 'relief_distributed');
+                    }
+                }
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'confirm_delivery':
+            if ($request_method === 'POST' && ($current_user['user_type'] ?? '') === 'barangay_official') {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $rid = (int) ($data['report_id'] ?? 0);
+                $result = $report->confirmProofOfDelivery(
+                    (int) $current_user['id'],
+                    $rid,
+                    $data['proof_photo'] ?? null,
+                    $data['signature_data'] ?? null
+                );
+                if ($result['success']) {
+                    $notification->notifyReportStatusChange((int) $current_user['id'], $rid, 'relief_received');
+                }
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid action']);

@@ -54,14 +54,17 @@
             right: 20px !important;
             top: 20px !important;
             z-index: 100000 !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-            padding: 10px 16px !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.3) !important;
+            background: rgba(255, 255, 255, 0.96) !important;
+            padding: 8px 14px !important;
+            border-radius: 999px !important;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.35) !important;
             display: flex !important;
-            gap: 14px !important;
+            gap: 12px !important;
             align-items: center !important;
+            border: 1px solid var(--border) !important;
         }
+        body.map-fullscreen-active #mapHeaderControls label { display: none !important; }
+        body.map-fullscreen-active #toggleMapSize { display: inline-flex !important; }
         body.map-fullscreen-active #mapSubInstructions {
             position: fixed !important;
             left: 20px !important;
@@ -159,7 +162,7 @@
                                     Situational Assessment & Field Notes
                                 </span>
                             </div>
-                            <textarea id="description" class="form-control" rows="4" placeholder="Provide brief observations, immediate needs, or prioritized concerns..."></textarea>
+                            <textarea id="description" class="form-control" rows="4" placeholder=""></textarea>
                         </div>
 
                         <!-- Vulnerable Demographics -->
@@ -327,6 +330,9 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="../js/daet-map-config.js"></script>
+    <script src="../js/relief-ajax.js"></script>
+    <script src="../js/report-structured.js"></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
     let sectorMap = null;
@@ -427,30 +433,29 @@
             btn.classList.add('btn-loading');
             btn.disabled = true;
 
-            const descriptionObj = {
-                is_structured: true,
-                notes: document.getElementById('description').value.trim(),
+            const descriptionJson = ReliefStructuredReport.toJson({
+                notes: document.getElementById('description').value,
                 vulnerable: {
-                    children: +document.getElementById('v_children').value || 0,
-                    seniors: +document.getElementById('v_seniors').value || 0,
-                    pregnant: +document.getElementById('v_pregnant').value || 0,
-                    pwd: +document.getElementById('v_pwd').value || 0
+                    children: document.getElementById('v_children').value,
+                    seniors: document.getElementById('v_seniors').value,
+                    pregnant: document.getElementById('v_pregnant').value,
+                    pwd: document.getElementById('v_pwd').value,
                 },
                 lifelines: {
                     power: document.getElementById('status_power').value,
                     water: document.getElementById('status_water').value,
-                    road: document.getElementById('status_road').value
+                    road: document.getElementById('status_road').value,
                 },
                 requests: {
-                    food: +document.getElementById('req_food').value || 0,
-                    hygiene: +document.getElementById('req_hygiene').value || 0,
-                    water: +document.getElementById('req_water').value || 0
-                }
-            };
+                    food: document.getElementById('req_food').value,
+                    hygiene: document.getElementById('req_hygiene').value,
+                    water: document.getElementById('req_water').value,
+                },
+            });
 
             const formData = {
                 disaster_type: type,
-                description: JSON.stringify(descriptionObj),
+                description: descriptionJson,
                 affected_families: document.getElementById('affectedFamilies').value,
                 damaged_houses: document.getElementById('damagedHouses').value,
                 injured_count: document.getElementById('injuredCount').value || 0,
@@ -462,44 +467,51 @@
             };
 
             try {
-                const response = await fetch('../../php/api/reports.php?action=submit', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-                const data = await response.json();
+                const data = await ReliefAjax.reports.submit(formData);
                 if (data.success) {
-                    alert('Incident report submitted and verified.');
+                    await ReliefUI.alert({ title: 'Report submitted', message: 'Your incident report was transmitted to MDRRMO.' });
                     window.location.href = 'dashboard.html';
                 } else {
-                    alert('Submission failed: ' + data.message);
+                    await ReliefUI.alert({ title: 'Submission failed', message: data.message || 'Could not submit report.' });
                     btn.classList.remove('btn-loading');
                     btn.disabled = false;
                 }
             } catch (error) {
-                alert('System error occurred.');
+                await ReliefUI.alert({ title: 'Error', message: 'System error occurred.' });
                 btn.classList.remove('btn-loading');
                 btn.disabled = false;
             }
         });
     });
 
+    function clampToDaet(latlng) {
+        const cfg = DaetMapConfig;
+        const b = L.latLngBounds(cfg.maxBounds);
+        return b.contains(latlng) ? latlng : b.getCenter();
+    }
+
     async function initSectorMap() {
         if (typeof L === 'undefined') return;
-        let lat = 14.1128, lng = 122.9559, label = 'Daet';
+        const cfg = DaetMapConfig;
+        let lat = cfg.center[0], lng = cfg.center[1], label = cfg.label;
         try {
-            const res = await fetch('../../php/api/reports.php?action=my_barangay_geo', { credentials: 'include' });
-            const j = await res.json();
+            const j = await ReliefAjax.reports.myBarangayGeo();
             if (j.success && j.barangay) {
-                lat = j.barangay.latitude;
-                lng = j.barangay.longitude;
+                const p = clampToDaet(L.latLng(+j.barangay.latitude, +j.barangay.longitude));
+                lat = p.lat;
+                lng = p.lng;
                 label = j.barangay.name;
             }
         } catch (e) { console.warn(e); }
 
-        sectorMap = L.map('sectorMap', { scrollWheelZoom: false }).setView([lat, lng], 14);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(sectorMap);
+        sectorMap = L.map('sectorMap', {
+            scrollWheelZoom: true,
+            maxBounds: cfg.maxBounds,
+            maxBoundsViscosity: 1.0,
+            minZoom: cfg.minZoom,
+            maxZoom: cfg.maxZoom,
+        }).setView([lat, lng], cfg.defaultZoom);
+        L.tileLayer(cfg.tileUrl, { maxZoom: cfg.maxZoom, attribution: cfg.tileAttribution }).addTo(sectorMap);
         const submitIcon = L.divIcon({
             className: 'submit-pin',
             html: '<div style="width: 24px; height: 24px; background: #0052cc; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px #0052cc;" class="pulse-hazard"></div>',
@@ -518,9 +530,12 @@
                 monitor.textContent = 'Lat: ' + p.lat.toFixed(6) + ', Lng: ' + p.lng.toFixed(6);
             }
         }
-        sectorMarker.on('dragend', syncHidden);
+        sectorMarker.on('dragend', () => {
+            sectorMarker.setLatLng(clampToDaet(sectorMarker.getLatLng()));
+            syncHidden();
+        });
         sectorMap.on('click', (ev) => {
-            sectorMarker.setLatLng(ev.latlng);
+            sectorMarker.setLatLng(clampToDaet(ev.latlng));
             syncHidden();
         });
         syncHidden();
@@ -533,8 +548,7 @@
         m.style.display = 'flex';
         body.textContent = 'Loading…';
         try {
-            const res = await fetch('../../php/api/relief.php?action=deploy_status', { credentials: 'include' });
-            const j = await res.json();
+            const j = await ReliefAjax.relief.deployStatus();
             if (!j.success || !j.deploy) {
                 body.textContent = 'Could not load deploy status.';
                 return;

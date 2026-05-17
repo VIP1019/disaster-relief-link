@@ -134,21 +134,46 @@
 
             <!-- Detail Modal -->
             <div id="detailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:24px;" onclick="if(event.target.id==='detailModal')closeDetailModal()">
-                <div class="card" style="max-width: 600px; width: 100%; margin: 0; position:relative; max-height:90vh; overflow-y:auto; background:#fff; border-radius:12px; padding:24px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+                <div class="card" style="max-width: 640px; width: 100%; margin: 0; max-height: calc(100vh - 48px); display:flex; flex-direction:column; background:#fff; border-radius:12px; padding:24px; box-sizing:border-box; overflow:hidden;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:12px; flex-shrink:0;">
                         <h3 style="margin:0; font-size:18px;">Incident Report Details</h3>
                         <button type="button" onclick="closeDetailModal()" style="border:none; background:none; cursor:pointer; font-size:24px; line-height:1; color:var(--text-subtle);">&times;</button>
                     </div>
-                    <div id="detailModalContent"></div>
+                    <div id="detailModalContent" style="flex:1; overflow-y:auto; padding-right:4px;"></div>
+                </div>
+            </div>
+
+            <div id="podModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1001; align-items:center; justify-content:center; padding:24px;">
+                <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;">
+                    <h3 style="margin-bottom:8px;">Confirm relief received</h3>
+                    <p style="font-size:13px;color:var(--text-subtle);margin-bottom:16px;">Upload a delivery receipt photo and/or sign below when aid reaches your barangay hall.</p>
+                    <input type="hidden" id="podReportId">
+                    <div class="form-group">
+                        <label class="form-label">Delivery photo</label>
+                        <input type="file" id="podPhoto" accept="image/*" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Digital signature</label>
+                        <canvas id="podSignature" width="400" height="140" style="width:100%;border:1px solid var(--border);border-radius:6px;touch-action:none;background:#fafbfc;"></canvas>
+                        <button type="button" class="btn btn-sm" style="margin-top:8px;border:1px solid var(--border);" id="podClearSig">Clear signature</button>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:16px;">
+                        <button type="button" class="btn btn-primary" id="podSubmitBtn">Submit proof</button>
+                        <button type="button" class="btn" style="border:1px solid var(--border);" id="podCancelBtn">Cancel</button>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="../js/relief-ajax.js"></script>
+    <script src="../js/report-structured.js"></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
         const api = '../../php/api';
         let activeEditDescriptionObj = null;
+        let podDrawing = false;
+        let podCtx = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
@@ -156,12 +181,19 @@
             loadReports();
             document.getElementById('saveEditReport').addEventListener('click', saveEdit);
             document.getElementById('cancelEditReport').addEventListener('click', () => { document.getElementById('editModal').style.display = 'none'; });
+            document.getElementById('podSubmitBtn').addEventListener('click', submitPod);
+            document.getElementById('podCancelBtn').addEventListener('click', closePodModal);
+            document.getElementById('podClearSig').addEventListener('click', clearPodSignature);
         });
 
         function statusBadge(st) {
             const s = (st || '').toLowerCase();
-            const cls = s === 'submitted' ? 'warning' : (s === 'relief_distributed' ? 'success' : 'info');
-            return `<span class="badge badge-${cls}">${(st || '').replace('_', ' ').toUpperCase()}</span>`;
+            let cls = 'info';
+            if (s === 'submitted') cls = 'warning';
+            else if (s === 'relief_distributed') cls = 'success';
+            else if (s === 'relief_received') cls = 'success';
+            const label = (st || '').replace(/_/g, ' ').toUpperCase();
+            return `<span class="badge badge-${cls}">${label}</span>`;
         }
 
         function esc(s) {
@@ -187,8 +219,7 @@
 
         async function loadReports() {
             try {
-                const response = await fetch(api + '/reports.php?action=list_user', { credentials: 'include' });
-                const data = await response.json();
+                const data = await ReliefAjax.reports.listUser();
                 const tbody = document.getElementById('reportsTableBody');
                 if (!data.success || !data.reports || data.reports.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-subtle);">No reports yet. Submit one from the menu.</td></tr>';
@@ -197,6 +228,7 @@
                 tbody.innerHTML = data.reports.map(r => {
                     const when = r.submitted_at ? new Date(r.submitted_at.replace(' ', 'T')).toLocaleString() : '—';
                     const canEdit = r.status === 'submitted';
+                    const canPod = r.status === 'relief_distributed';
                     return `<tr>
                         <td><button type="button" class="report-id" style="cursor:pointer;border:none;" onclick="openReportDetail(${r.id})">REP-2024-${String(r.id).padStart(4, '0')}</button></td>
                         <td style="font-size:12px;">${when}</td>
@@ -207,7 +239,9 @@
                         <td>
                             <button type="button" class="btn btn-sm btn-primary" style="margin-right:4px;background:#f4f5f7;color:var(--text-main);border:1px solid var(--border);" onclick="openReportDetail(${r.id})">Details</button>
                             ${canEdit ? `<button type="button" class="btn btn-sm btn-primary" onclick="openEdit(${r.id})">Edit</button>
-                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Reviewed</span>'}
+                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : ''}
+                            ${canPod ? `<button type="button" class="btn btn-sm btn-primary" style="margin-left:4px;" onclick="openPodModal(${r.id})">Confirm delivery</button>` : ''}
+                            ${!canEdit && !canPod ? '<span style="font-size:11px;color:var(--text-subtle);">Locked</span>' : ''}
                         </td>
                     </tr>`;
                 }).join('');
@@ -287,46 +321,37 @@
                                  +document.getElementById('editReqHygiene').value > 0 ||
                                  +document.getElementById('editReqWater').value > 0;
 
-            if (isStructured) {
-                const struct = {
-                    is_structured: true,
+            if (isStructured || activeEditDescriptionObj) {
+                descValue = ReliefStructuredReport.toJson({
                     notes: descValue.trim(),
                     vulnerable: {
-                        children: +document.getElementById('editVulnChildren').value,
-                        seniors: +document.getElementById('editVulnSeniors').value,
-                        pregnant: +document.getElementById('editVulnPregnant').value,
-                        pwd: +document.getElementById('editVulnPwd').value
+                        children: document.getElementById('editVulnChildren').value,
+                        seniors: document.getElementById('editVulnSeniors').value,
+                        pregnant: document.getElementById('editVulnPregnant').value,
+                        pwd: document.getElementById('editVulnPwd').value,
                     },
                     lifelines: {
                         power: document.getElementById('editPowerStatus').value,
                         water: document.getElementById('editWaterStatus').value,
-                        road: document.getElementById('editRoadStatus').value
+                        road: document.getElementById('editRoadStatus').value,
                     },
                     requests: {
-                        food: +document.getElementById('editReqFood').value,
-                        hygiene: +document.getElementById('editReqHygiene').value,
-                        water: +document.getElementById('editReqWater').value
-                    }
-                };
-                descValue = JSON.stringify(struct);
+                        food: document.getElementById('editReqFood').value,
+                        hygiene: document.getElementById('editReqHygiene').value,
+                        water: document.getElementById('editReqWater').value,
+                    },
+                });
             }
 
-            const body = {
+            const j = await ReliefAjax.put('reports.php', 'update_own', {
                 report_id: id,
                 disaster_type: document.getElementById('editDisasterType').value,
                 affected_families: +document.getElementById('editAff').value,
                 damaged_houses: +document.getElementById('editDam').value,
                 injured_count: +document.getElementById('editInj').value,
                 death_count: +document.getElementById('editDeath').value,
-                description: descValue
-            };
-            const res = await fetch(api + '/reports.php?action=update_own', {
-                method: 'PUT',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                description: descValue,
             });
-            const j = await res.json();
             if (j.success) {
                 document.getElementById('editModal').style.display = 'none';
                 loadReports();
@@ -369,8 +394,7 @@
             content.innerHTML = '<p style="color:var(--text-subtle);">Loading...</p>';
             document.getElementById('detailModal').style.display = 'flex';
             try {
-                const res = await fetch(api + '/reports.php?action=get&report_id=' + id, { credentials: 'include' });
-                const data = await res.json();
+                const data = await ReliefAjax.reports.get(id);
                 if (!data.success || !data.report) {
                     content.innerHTML = '<p>Could not load report.</p>';
                     return;
@@ -392,6 +416,8 @@
                         <strong style="display:block;margin-bottom:8px;font-size:13px;color:var(--text-main);">Situational Assessment & Logistical Intel</strong>
                         ${renderDescriptionField(r.description)}
                     </div>
+                    ${r.status === 'relief_distributed' ? '<div style="margin-top:16px;"><button type="button" class="btn btn-primary" onclick="openPodModal(' + r.id + ')">Confirm relief received</button></div>' : ''}
+                    ${r.status === 'relief_received' && (r.proof_of_delivery_photo || r.delivery_signature_data) ? '<div style="margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:8px;"><strong>Proof on file</strong>' + (r.proof_of_delivery_photo ? '<br><img src="' + esc(r.proof_of_delivery_photo) + '" style="max-width:100%;margin-top:8px;border-radius:6px;">' : '') + (r.delivery_signature_data ? '<br><img src="' + esc(r.delivery_signature_data) + '" style="max-width:100%;height:100px;margin-top:8px;">' : '') + '</div>' : ''}
                 `;
             } catch (error) {
                 content.innerHTML = '<p>An error occurred while loading details.</p>';
@@ -403,100 +429,94 @@
         }
 
         function renderDescriptionField(rawText) {
-            if (!rawText) return '<span style="color:var(--text-subtle);">—</span>';
-            try {
-                if (rawText.trim().startsWith('{')) {
-                    const d = JSON.parse(rawText);
-                    if (d && d.is_structured) {
-                        const notes = d.notes ? `<div style="margin-bottom:14px;background:#f8f9fa;padding:12px;border-radius:6px;border-left:3px solid var(--primary);font-style:italic;color:var(--text-main); font-size:13px;">"${esc(d.notes)}"</div>` : '<div style="color:var(--text-subtle);margin-bottom:10px;font-style:italic;font-size:13px;">No field notes attached.</div>';
-                        
-                        // Vulnerable Grid
-                        const vuln = d.vulnerable || {};
-                        const vulnerableHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Vulnerable Demographics
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;text-align:center;">
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Children</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.children || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Seniors</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.seniors || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Pregnant</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pregnant || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">PWDs</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pwd || 0)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+            return ReliefStructuredReport.renderHtml(ReliefStructuredReport.parseDescription(rawText || ''), esc);
+        }
 
-                        // Lifelines Grid
-                        const life = d.lifelines || {};
-                        const powerClass = life.power === 'Outage' ? 'danger' : (life.power === 'Interrupted' ? 'warning' : 'success');
-                        const waterClass = life.water === 'Contaminated' ? 'danger' : (life.water === 'Interrupted' ? 'warning' : 'success');
-                        const roadClass = life.road === 'Blocked' ? 'danger' : (life.road === 'Light Only' ? 'warning' : 'success');
-                        
-                        const lifelinesHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Utility & Lifeline Status
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
-                                    <div style="border-left:4px solid var(--${powerClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Electricity</div>
-                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.power || 'Unknown')}</div>
-                                    </div>
-                                    <div style="border-left:4px solid var(--${waterClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Water Supply</div>
-                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.water || 'Unknown')}</div>
-                                    </div>
-                                    <div style="border-left:4px solid var(--${roadClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Road Passage</div>
-                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.road || 'Unknown')}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+        function initPodSignature() {
+            const canvas = document.getElementById('podSignature');
+            if (!canvas || podCtx) return;
+            podCtx = canvas.getContext('2d');
+            podCtx.strokeStyle = '#172b4d';
+            podCtx.lineWidth = 2;
+            const pos = (e) => {
+                const r = canvas.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+                const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+                return { x: x * (canvas.width / r.width), y: y * (canvas.height / r.height) };
+            };
+            const down = (e) => { e.preventDefault(); podDrawing = true; const p = pos(e); podCtx.beginPath(); podCtx.moveTo(p.x, p.y); };
+            const move = (e) => {
+                if (!podDrawing) return;
+                e.preventDefault();
+                const p = pos(e);
+                podCtx.lineTo(p.x, p.y);
+                podCtx.stroke();
+            };
+            const up = () => { podDrawing = false; };
+            canvas.addEventListener('mousedown', down);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', up);
+            canvas.addEventListener('mouseleave', up);
+            canvas.addEventListener('touchstart', down, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', up);
+        }
 
-                        // Supplies Request
-                        const req = d.requests || {};
-                        const requestsHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Supply Resources Requested
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;text-align:center;">
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Food Packs</div>
-                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.food || 0)} Pcs</div>
-                                    </div>
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Hygiene Kits</div>
-                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.hygiene || 0)} Pcs</div>
-                                    </div>
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Drinking Water</div>
-                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.water || 0)} Ltrs</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+        function clearPodSignature() {
+            const canvas = document.getElementById('podSignature');
+            if (canvas && podCtx) podCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
 
-                        return notes + vulnerableHtml + lifelinesHtml + requestsHtml;
-                    }
-                }
-            } catch (e) { console.warn("JSON parse error for description", e); }
-            
-            // Fallback for simple plain text reports
-            return `<div style="background:#f8f9fa;padding:12px;border-radius:6px;color:var(--text-subtle);white-space:pre-wrap;font-size:13px;">${esc(rawText)}</div>`;
+        function openPodModal(reportId) {
+            document.getElementById('podReportId').value = reportId;
+            document.getElementById('podPhoto').value = '';
+            clearPodSignature();
+            initPodSignature();
+            document.getElementById('podModal').style.display = 'flex';
+        }
+
+        function closePodModal() {
+            document.getElementById('podModal').style.display = 'none';
+        }
+
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function canvasHasInk() {
+            const canvas = document.getElementById('podSignature');
+            if (!canvas || !podCtx) return false;
+            const data = podCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+            for (let i = 3; i < data.length; i += 4) {
+                if (data[i] > 0) return true;
+            }
+            return false;
+        }
+
+        async function submitPod() {
+            const reportId = +document.getElementById('podReportId').value;
+            const file = document.getElementById('podPhoto').files[0];
+            let proof_photo = null;
+            let signature_data = null;
+            if (file) proof_photo = await readFileAsDataUrl(file);
+            if (canvasHasInk()) signature_data = document.getElementById('podSignature').toDataURL('image/png');
+            if (!proof_photo && !signature_data) {
+                alert('Upload a photo or sign in the box.');
+                return;
+            }
+            const data = await ReliefAjax.reports.confirmDelivery({ report_id: reportId, proof_photo, signature_data });
+            if (data.success) {
+                closePodModal();
+                loadReports();
+                alert(data.message || 'Delivery confirmed. MDRRMO has been notified.');
+            } else {
+                alert(data.message || 'Could not confirm delivery.');
+            }
         }
     </script>
 </body>

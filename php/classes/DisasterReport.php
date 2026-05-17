@@ -261,7 +261,9 @@ class DisasterReport {
         $check = $this->conn->prepare(
             "SELECT dr.id, dr.user_id, dr.barangay_id, ec.center_name, ec.address, ec.status
              FROM {$this->table} dr
-             INNER JOIN evacuation_centers ec ON ec.id = ? AND ec.barangay_id = dr.barangay_id
+             INNER JOIN barangays dr_b ON dr.barangay_id = dr_b.id
+             INNER JOIN evacuation_centers ec ON ec.id = ?
+             INNER JOIN barangays ec_b ON ec.barangay_id = ec_b.id AND ec_b.municipality = dr_b.municipality
              WHERE dr.id = ?
              LIMIT 1"
         );
@@ -269,7 +271,7 @@ class DisasterReport {
         $check->execute();
         $row = $check->get_result()->fetch_assoc();
         if (!$row) {
-            return ['success' => false, 'message' => 'Choose an evacuation center from the report barangay'];
+            return ['success' => false, 'message' => 'Choose a valid evacuation center in the same municipality (Daet).'];
         }
         if ($row['status'] === 'closed') {
             return ['success' => false, 'message' => 'Closed evacuation centers cannot be suggested'];
@@ -332,7 +334,7 @@ class DisasterReport {
      * Update report status
      */
     public function updateReportStatus($report_id, $status) {
-        $valid_statuses = ['submitted', 'reviewed', 'prioritized', 'relief_distributed'];
+        $valid_statuses = ['submitted', 'reviewed', 'prioritized', 'relief_distributed', 'relief_received'];
         if (!in_array($status, $valid_statuses)) {
             return ['success' => false, 'message' => 'Invalid status'];
         }
@@ -471,6 +473,134 @@ class DisasterReport {
         }
 
         return ['weather' => 'Unknown', 'temperature' => null, 'humidity' => null, 'wind_speed' => null];
+    }
+
+    /**
+     * Parse structured JSON from description column.
+     *
+     * @return array{requests: array<string, int>, notes: string}|null
+     */
+    public static function parseStructuredDescription($description) {
+        if (!$description || !is_string($description)) {
+            return null;
+        }
+        $t = trim($description);
+        if ($t === '' || $t[0] !== '{') {
+            return null;
+        }
+        $d = json_decode($t, true);
+        if (!is_array($d) || empty($d['is_structured'])) {
+            return null;
+        }
+        $req = $d['requests'] ?? [];
+        return [
+            'notes' => (string) ($d['notes'] ?? ''),
+            'requests' => [
+                'food' => (int) ($req['food'] ?? 0),
+                'hygiene' => (int) ($req['hygiene'] ?? 0),
+                'water' => (int) ($req['water'] ?? 0),
+            ],
+        ];
+    }
+
+    /**
+     * Admin: deploy aid — deduct inventory from structured requests, record distribution, update status.
+     */
+    public function deployAidFromReport($report_id, $admin_user_id) {
+        $rid = (int) $report_id;
+        $aid = (int) $admin_user_id;
+        if ($rid <= 0 || $aid <= 0) {
+            return ['success' => false, 'message' => 'Invalid report'];
+        }
+
+        $row = $this->getReportById($rid);
+        if (!$row) {
+            return ['success' => false, 'message' => 'Report not found'];
+        }
+
+        $status = $row['status'] ?? '';
+        if (!in_array($status, ['reviewed', 'prioritized', 'submitted'], true)) {
+            if ($status === 'relief_distributed' || $status === 'relief_received') {
+                return ['success' => false, 'message' => 'Aid was already deployed for this report.'];
+            }
+            return ['success' => false, 'message' => 'Report must be verified before deploying aid.'];
+        }
+
+        $structured = self::parseStructuredDescription($row['description'] ?? '');
+        if (!$structured) {
+            return ['success' => false, 'message' => 'No structured supply requests on this report. Ask the barangay to resubmit with logistics quantities.'];
+        }
+
+        require_once __DIR__ . '/ReliefManagement.php';
+        $relief = new ReliefManagement();
+        $deploy = $relief->deployStructuredRequests(
+            $rid,
+            (int) $row['barangay_id'],
+            $structured['requests'],
+            $aid
+        );
+
+        if (!$deploy['success']) {
+            return $deploy;
+        }
+
+        if ($status === 'submitted') {
+            $this->updateReportStatus($rid, 'reviewed');
+        }
+        $this->updateReportStatus($rid, 'relief_distributed');
+
+        return [
+            'success' => true,
+            'message' => $deploy['message'] ?? 'Aid deployed and inventory deducted.',
+            'deductions' => $deploy['deductions'] ?? [],
+        ];
+    }
+
+    /**
+     * Barangay official: confirm proof of delivery (photo and/or signature).
+     */
+    public function confirmProofOfDelivery($user_id, $report_id, $photo_base64 = null, $signature_base64 = null) {
+        $rid = (int) $report_id;
+        $uid = (int) $user_id;
+        if ($rid <= 0 || $uid <= 0) {
+            return ['success' => false, 'message' => 'Invalid report'];
+        }
+
+        $check = $this->conn->prepare(
+            "SELECT id, status FROM {$this->table} WHERE id = ? AND user_id = ? LIMIT 1"
+        );
+        $check->bind_param('ii', $rid, $uid);
+        $check->execute();
+        $row = $check->get_result()->fetch_assoc();
+        if (!$row) {
+            return ['success' => false, 'message' => 'Report not found'];
+        }
+        if ($row['status'] !== 'relief_distributed') {
+            return ['success' => false, 'message' => 'Proof of delivery is only available after MDRRMO marks aid as deployed.'];
+        }
+
+        $photo = is_string($photo_base64) && strlen($photo_base64) > 50 ? $photo_base64 : null;
+        $sig = is_string($signature_base64) && strlen($signature_base64) > 50 ? $signature_base64 : null;
+        if (!$photo && !$sig) {
+            return ['success' => false, 'message' => 'Upload a delivery photo or provide a digital signature.'];
+        }
+
+        if ($photo && strlen($photo) > 6000000) {
+            return ['success' => false, 'message' => 'Photo is too large. Use a smaller image.'];
+        }
+
+        $q = "UPDATE {$this->table}
+              SET status = 'relief_received',
+                  proof_of_delivery_photo = COALESCE(?, proof_of_delivery_photo),
+                  delivery_signature_data = COALESCE(?, delivery_signature_data),
+                  delivery_confirmed_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND user_id = ?";
+        $stmt = $this->conn->prepare($q);
+        $stmt->bind_param('ssii', $photo, $sig, $rid, $uid);
+        if ($stmt->execute()) {
+            return ['success' => true, 'message' => 'Proof of delivery recorded. Status: RELIEF RECEIVED.'];
+        }
+        return ['success' => false, 'message' => 'Could not save proof of delivery'];
     }
 }
 ?>

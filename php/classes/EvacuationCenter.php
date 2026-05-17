@@ -32,6 +32,61 @@ class EvacuationCenter {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    /**
+     * All evacuation centers in a municipality, sorted by distance from a point (meters).
+     *
+     * @return array<int, array>
+     */
+    public function listNearby($latitude, $longitude, $municipality = 'Daet', $report_barangay_id = null) {
+        $lat = (float) $latitude;
+        $lon = (float) $longitude;
+        $muni = trim((string) $municipality);
+        if ($muni === '') {
+            $muni = 'Daet';
+        }
+        $reportBid = $report_barangay_id !== null && $report_barangay_id !== ''
+            ? (int) $report_barangay_id
+            : null;
+
+        $hasCoords = abs($lat) > 0.0001 && abs($lon) > 0.0001;
+
+        if ($hasCoords) {
+            $q = "SELECT ec.*, b.name AS barangay_name, b.municipality,
+                    (6371000 * ACOS(LEAST(1, GREATEST(-1,
+                        COS(RADIANS(?)) * COS(RADIANS(ec.latitude))
+                        * COS(RADIANS(ec.longitude) - RADIANS(?))
+                        + SIN(RADIANS(?)) * SIN(RADIANS(ec.latitude))
+                    )))) AS distance_m
+                  FROM {$this->table} ec
+                  INNER JOIN barangays b ON ec.barangay_id = b.id
+                  WHERE b.municipality = ?
+                    AND ec.latitude IS NOT NULL AND ec.longitude IS NOT NULL
+                    AND (ec.latitude != 0 OR ec.longitude != 0)
+                  ORDER BY distance_m ASC, ec.center_name ASC";
+            $stmt = $this->conn->prepare($q);
+            $stmt->bind_param('ddds', $lat, $lon, $lat, $muni);
+        } else {
+            $q = "SELECT ec.*, b.name AS barangay_name, b.municipality, NULL AS distance_m
+                  FROM {$this->table} ec
+                  INNER JOIN barangays b ON ec.barangay_id = b.id
+                  WHERE b.municipality = ?
+                  ORDER BY b.name, ec.center_name";
+            $stmt = $this->conn->prepare($q);
+            $stmt->bind_param('s', $muni);
+        }
+
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($rows as &$row) {
+            $row['distance_m'] = isset($row['distance_m']) ? (float) $row['distance_m'] : null;
+            $row['same_barangay'] = $reportBid !== null && (int) $row['barangay_id'] === $reportBid;
+        }
+        unset($row);
+
+        return $rows;
+    }
+
     public function getById($id) {
         $id = (int) $id;
         if ($id <= 0) {

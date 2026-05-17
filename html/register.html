@@ -115,6 +115,7 @@
         </div>
     </div>
 
+    <script src="../js/relief-ajax.js"></script>
     <script>
         function togglePass(id) {
             const input = document.getElementById(id);
@@ -150,14 +151,7 @@
             };
 
             try {
-                const response = await fetch('../php/api/auth.php?action=register', {
-                    credentials: 'include',
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
+                const data = await ReliefAjax.auth.register(formData);
 
                 if (data.success) {
                     alert('Registration successful! Access granted.');

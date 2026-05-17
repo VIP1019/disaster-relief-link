@@ -15,6 +15,13 @@
         .evac-panel { margin-top: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
         .evac-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
         @media (max-width: 760px) { .evac-grid { grid-template-columns: 1fr; } }
+        .evac-nearby-list { margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: #fafbfc; }
+        .evac-nearby-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px; cursor: pointer; transition: background 0.15s; }
+        .evac-nearby-item:last-child { border-bottom: none; }
+        .evac-nearby-item:hover { background: #eef2ff; }
+        .evac-nearby-item.is-selected { background: #deebff; }
+        .evac-dist { flex-shrink: 0; font-weight: 700; color: var(--primary); font-size: 11px; white-space: nowrap; }
+        .evac-dist.nearest { color: var(--success); }
     </style>
 </head>
 <body>
@@ -80,6 +87,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="../js/relief-ajax.js"></script>
+    <script src="../js/report-structured.js"></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
         let reportRows = [];
@@ -104,100 +113,25 @@
         }
 
         function renderDescriptionField(rawText) {
-            if (!rawText) return '<span style="color:var(--text-subtle);">—</span>';
-            try {
-                if (rawText.trim().startsWith('{')) {
-                    const d = JSON.parse(rawText);
-                    if (d && d.is_structured) {
-                        const notes = d.notes ? `<div style="margin-bottom:14px;background:#f8f9fa;padding:12px;border-radius:6px;border-left:3px solid var(--primary);font-style:italic;color:var(--text-main); font-size:13px;">"${esc(d.notes)}"</div>` : '<div style="color:var(--text-subtle);margin-bottom:10px;font-style:italic;font-size:13px;">No field notes attached.</div>';
-                        
-                        // Vulnerable Grid
-                        const vuln = d.vulnerable || {};
-                        const vulnerableHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Vulnerable Demographics
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;text-align:center;">
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Children</div>
-                                        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.children || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Seniors</div>
-                                        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.seniors || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Pregnant</div>
-                                        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pregnant || 0)}</div>
-                                    </div>
-                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">PWDs</div>
-                                        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pwd || 0)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+            return ReliefStructuredReport.renderHtml(ReliefStructuredReport.parseDescription(rawText || ''), esc);
+        }
 
-                        // Lifelines Grid
-                        const life = d.lifelines || {};
-                        const powerClass = life.power === 'Outage' ? 'danger' : (life.power === 'Interrupted' ? 'warning' : 'success');
-                        const waterClass = life.water === 'Contaminated' ? 'danger' : (life.water === 'Interrupted' ? 'warning' : 'success');
-                        const roadClass = life.road === 'Blocked' ? 'danger' : (life.road === 'Light Only' ? 'warning' : 'success');
-                        
-                        const lifelinesHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Utility & Lifeline Status
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
-                                    <div style="border-left:4px solid var(--${powerClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Electricity</div>
-                                        <div style="font-size:12px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.power || 'Unknown')}</div>
-                                    </div>
-                                    <div style="border-left:4px solid var(--${waterClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Water Supply</div>
-                                        <div style="font-size:12px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.water || 'Unknown')}</div>
-                                    </div>
-                                    <div style="border-left:4px solid var(--${roadClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Road Passage</div>
-                                        <div style="font-size:12px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.road || 'Unknown')}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        // Supplies Request
-                        const req = d.requests || {};
-                        const requestsHtml = `
-                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;">
-                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                                    Supply Resources Requested
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;text-align:center;">
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Food Packs</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.food || 0)} Pcs</div>
-                                    </div>
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Hygiene Kits</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.hygiene || 0)} Pcs</div>
-                                    </div>
-                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
-                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Drinking Water</div>
-                                        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.water || 0)} Ltrs</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        return notes + vulnerableHtml + lifelinesHtml + requestsHtml;
-                    }
-                }
-            } catch (e) { console.warn("JSON parse error for description", e); }
-            
-            // Fallback for simple plain text reports
-            return `<div style="background:#f8f9fa;padding:12px;border-radius:6px;color:var(--text-subtle);white-space:pre-wrap;font-size:13px;">${esc(rawText)}</div>`;
+        function renderProofOfDelivery(r) {
+            if (String(r.status || '').toLowerCase() !== 'relief_received') return '';
+            const when = r.delivery_confirmed_at
+                ? esc(new Date(String(r.delivery_confirmed_at).replace(' ', 'T')).toLocaleString())
+                : '—';
+            let html = '<div style="margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:8px;background:#f0fdf4;">';
+            html += '<div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--success);margin-bottom:10px;">Proof of delivery</div>';
+            html += '<div style="font-size:12px;color:var(--text-subtle);margin-bottom:10px;">Confirmed by barangay: ' + when + '</div>';
+            if (r.proof_of_delivery_photo) {
+                html += '<div style="margin-bottom:10px;"><strong style="font-size:12px;">Delivery photo</strong><br><img src="' + esc(r.proof_of_delivery_photo) + '" alt="Proof" style="max-width:100%;border-radius:6px;margin-top:6px;border:1px solid var(--border);"></div>';
+            }
+            if (r.delivery_signature_data) {
+                html += '<div><strong style="font-size:12px;">Digital signature</strong><br><img src="' + esc(r.delivery_signature_data) + '" alt="Signature" style="max-width:100%;height:120px;border-radius:6px;margin-top:6px;background:#fff;border:1px solid var(--border);"></div>';
+            }
+            html += '</div>';
+            return html;
         }
 
         function statusBadgeClass(status) {
@@ -206,6 +140,7 @@
             if (s === 'reviewed') return 'success';
             if (s === 'prioritized') return 'info';
             if (s === 'relief_distributed') return 'success';
+            if (s === 'relief_received') return 'success';
             return 'info';
         }
 
@@ -250,6 +185,7 @@
                             <td>
                                 <button type="button" class="btn btn-sm btn-primary" onclick="openReportDetail(${r.id})">Details</button>
                                 <button type="button" class="btn btn-sm btn-primary" onclick="approveReport(${r.id})">Verify</button>
+                                <button type="button" class="btn btn-sm btn-primary" style="margin-left:4px;background:#172b4d;" onclick="deployAid(${r.id})">Deploy Aid</button>
                                 <button type="button" class="btn btn-sm" style="border: 1px solid var(--border); margin-left: 4px;" onclick="rejectReport(${r.id})">Return</button>
                             </td>
                         </tr>
@@ -298,6 +234,7 @@
                         <strong style="display:block;margin-bottom:8px;font-size:13px;color:var(--text-main);">Situational Assessment & Logistical Intel</strong>
                         ${renderDescriptionField(r.description)}
                     </div>
+                    ${renderProofOfDelivery(r)}
                     <div class="evac-panel">
                         <div class="card-title" style="margin-bottom:10px;">
                             <span>Evacuation guidance</span>
@@ -306,8 +243,10 @@
                         <div class="evac-grid">
                             <div>
                                 <div class="form-group">
-                                    <label class="form-label">Suggested center</label>
+                                    <label class="form-label">Nearest evacuation centers (Daet)</label>
                                     <select id="evacCenterSelect" class="form-control"><option value="">Loading centers...</option></select>
+                                    <div id="evacNearbyList" class="evac-nearby-list" style="display:none;"></div>
+                                    <p id="evacNearbyHint" style="font-size:11px;color:var(--text-subtle);margin-top:6px;"></p>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Instruction note</label>
@@ -326,46 +265,141 @@
                             </div>
                         </div>
                     </div>
+                    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary" onclick="deployAid(${r.id})">Deploy Aid (deduct inventory)</button>
+                        <button type="button" class="btn" style="border:1px solid var(--border);" onclick="approveReport(${r.id})">Verify only</button>
+                    </div>
                 `;
-                loadEvacuationChoices(r.barangay_id, r.suggested_evacuation_center_id);
+                await loadEvacuationChoices(r.barangay_id, r.suggested_evacuation_center_id, r.map_latitude, r.map_longitude);
                 if (typeof L !== 'undefined' && r.map_latitude && r.map_longitude) {
-                    setTimeout(() => {
-                        const el = document.getElementById('reportDetailMap');
-                        detailMap = L.map(el).setView([+r.map_latitude, +r.map_longitude], 15);
-                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(detailMap);
-                        const reportIcon = L.divIcon({
-                            className: 'report-pin',
-                            html: '<div style="width: 18px; height: 18px; background: #ff5630; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #ff5630;" class="pulse-hazard"></div>',
-                            iconSize: [18, 18],
-                            iconAnchor: [9, 9]
-                        });
-                        L.marker([+r.map_latitude, +r.map_longitude], { icon: reportIcon }).addTo(detailMap).bindPopup('Report location').openPopup();
-                        detailMap.invalidateSize();
-                    }, 100);
+                    setTimeout(() => initReportDetailMap(r), 120);
                 }
             } catch (e) {
                 content.innerHTML = '<p>Network error.</p>';
             }
         }
 
-        async function loadEvacuationChoices(barangayId, selectedId) {
+        function formatEvacDistance(meters) {
+            if (meters == null || meters === '' || isNaN(meters)) return '—';
+            const m = Number(meters);
+            if (m < 1000) return Math.round(m) + ' m';
+            return (m / 1000).toFixed(1) + ' km';
+        }
+
+        let evacCentersForMap = [];
+
+        async function loadEvacuationChoices(barangayId, selectedId, reportLat, reportLon) {
             const select = document.getElementById('evacCenterSelect');
+            const listEl = document.getElementById('evacNearbyList');
+            const hintEl = document.getElementById('evacNearbyHint');
             if (!select) return;
+            select.innerHTML = '<option value="">Loading nearby centers...</option>';
+            if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+            if (hintEl) hintEl.textContent = '';
             try {
-                const res = await fetch('../../php/api/evacuation.php?action=list&barangay_id=' + encodeURIComponent(barangayId), { credentials: 'include' });
-                const data = await res.json();
+                const params = {
+                    report_barangay_id: barangayId,
+                    municipality: 'Daet',
+                };
+                if (reportLat != null && reportLon != null) {
+                    params.latitude = reportLat;
+                    params.longitude = reportLon;
+                }
+                const data = await ReliefAjax.evacuation.listNearby(params);
                 const centers = data.success && Array.isArray(data.centers) ? data.centers : [];
-                select.innerHTML = '<option value="">Select an evacuation center</option>' + centers.map(c => {
+                evacCentersForMap = centers;
+
+                if (!centers.length) {
+                    select.innerHTML = '<option value="">No evacuation centers registered in Daet</option>';
+                    if (hintEl) hintEl.textContent = 'Add centers under Evacuation Centers in the admin menu.';
+                    return;
+                }
+
+                select.innerHTML = '<option value="">Select nearest center</option>' + centers.map((c, idx) => {
                     const disabled = c.status === 'closed' ? ' disabled' : '';
                     const selected = String(c.id) === String(selectedId || '') ? ' selected' : '';
-                    return `<option value="${esc(c.id)}"${selected}${disabled}>${esc(c.center_name)} (${esc(c.current_occupancy)}/${esc(c.capacity)} - ${esc(c.status)})</option>`;
+                    const dist = formatEvacDistance(c.distance_m);
+                    const brgy = c.barangay_name ? ' · ' + c.barangay_name : '';
+                    const tag = idx === 0 && c.distance_m != null ? ' [nearest]' : '';
+                    return `<option value="${esc(c.id)}"${selected}${disabled}>${esc(c.center_name)} — ${dist}${brgy}${tag} (${esc(c.current_occupancy)}/${esc(c.capacity)})</option>`;
                 }).join('');
-                if (!centers.length) {
-                    select.innerHTML = '<option value="">No centers found for this barangay</option>';
+
+                if (listEl) {
+                    listEl.style.display = 'block';
+                    listEl.innerHTML = centers.map((c, idx) => {
+                        const dist = formatEvacDistance(c.distance_m);
+                        const distClass = idx === 0 && c.distance_m != null ? ' evac-dist nearest' : ' evac-dist';
+                        const same = c.same_barangay ? '<span class="badge badge-info" style="font-size:9px;margin-left:4px;">Same barangay</span>' : '';
+                        const statusCls = c.status === 'open' ? 'success' : (c.status === 'full' ? 'warning' : 'danger');
+                        return `<div class="evac-nearby-item${String(c.id) === String(selectedId || '') ? ' is-selected' : ''}" data-center-id="${esc(c.id)}" role="button" tabindex="0">
+                            <div>
+                                <div style="font-weight:700;color:var(--text-main);">${esc(c.center_name)}${same}</div>
+                                <div style="color:var(--text-subtle);margin-top:2px;">${esc(c.barangay_name || '')} · ${esc(c.address || '')}</div>
+                                <div style="margin-top:4px;"><span class="badge badge-${statusCls}">${esc(String(c.status || '').toUpperCase())}</span>
+                                <span style="margin-left:6px;color:var(--text-subtle);">${esc(c.current_occupancy)}/${esc(c.capacity)} persons</span></div>
+                            </div>
+                            <span class="${distClass.trim()}">${dist}</span>
+                        </div>`;
+                    }).join('');
+
+                    listEl.querySelectorAll('.evac-nearby-item').forEach((row) => {
+                        const pick = () => {
+                            const id = row.getAttribute('data-center-id');
+                            select.value = id;
+                            listEl.querySelectorAll('.evac-nearby-item').forEach((el) => el.classList.remove('is-selected'));
+                            row.classList.add('is-selected');
+                        };
+                        row.addEventListener('click', pick);
+                        row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+                    });
+                }
+
+                if (hintEl) {
+                    const nearest = centers[0];
+                    if (nearest && nearest.distance_m != null) {
+                        hintEl.textContent = 'Sorted by distance from the report pin (straight-line). Nearest: ' + nearest.center_name + ' (' + formatEvacDistance(nearest.distance_m) + ').';
+                    } else {
+                        hintEl.textContent = 'Distances use straight-line measure from the report map pin when available.';
+                    }
                 }
             } catch (e) {
                 select.innerHTML = '<option value="">Could not load centers</option>';
             }
+        }
+
+        function initReportDetailMap(r) {
+            const el = document.getElementById('reportDetailMap');
+            if (!el || typeof L === 'undefined') return;
+            if (detailMap) { detailMap.remove(); detailMap = null; }
+            const rLat = +r.map_latitude;
+            const rLon = +r.map_longitude;
+            detailMap = L.map(el).setView([rLat, rLon], 14);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(detailMap);
+            const reportIcon = L.divIcon({
+                className: 'report-pin',
+                html: '<div style="width: 18px; height: 18px; background: #ff5630; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #ff5630;"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+            });
+            L.marker([rLat, rLon], { icon: reportIcon }).addTo(detailMap).bindPopup('<strong>Report location</strong>').openPopup();
+
+            const bounds = L.latLngBounds([[rLat, rLon]]);
+            (evacCentersForMap || []).slice(0, 8).forEach((c) => {
+                const lat = parseFloat(c.latitude);
+                const lon = parseFloat(c.longitude);
+                if (isNaN(lat) || isNaN(lon)) return;
+                const dist = formatEvacDistance(c.distance_m);
+                L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div style="background:#0052cc;color:#fff;font-size:9px;font-weight:700;padding:3px 6px;border-radius:4px;white-space:nowrap;border:1px solid #fff;">' + dist + '</div>',
+                        iconAnchor: [20, 10],
+                    }),
+                }).bindPopup('<strong>' + String(c.center_name || '') + '</strong><br>' + dist + ' from report<br>' + String(c.barangay_name || '')).addTo(detailMap);
+                bounds.extend([lat, lon]);
+            });
+            if (bounds.isValid()) detailMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+            detailMap.invalidateSize();
         }
 
         async function suggestEvacuation(reportId) {
@@ -426,6 +460,26 @@
                     loadReports();
                 } else alert(data.message || 'Update failed');
             } catch (error) { alert('Request failed.'); }
+        }
+
+        async function deployAid(id) {
+            if (!(await ReliefUI.confirm({
+                title: 'Deploy aid?',
+                message: 'This will deduct requested food, hygiene, and water quantities from central inventory and mark the report as relief distributed.',
+                confirmText: 'Deploy aid',
+            }))) return;
+            try {
+                const data = await ReliefAjax.reports.deployAid(id);
+                if (data.success) {
+                    await ReliefUI.alert({ title: 'Deployment complete', message: data.message || 'Inventory deducted.' });
+                    closeReportModal();
+                    loadReports();
+                } else {
+                    await ReliefUI.alert({ title: 'Cannot deploy', message: data.message || 'Deployment failed.' });
+                }
+            } catch (e) {
+                await ReliefUI.alert({ title: 'Error', message: 'Request failed.' });
+            }
         }
 
         async function approveReport(id) {

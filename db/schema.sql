@@ -16,6 +16,7 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS road_hazards;
 DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS relief_distributions;
 DROP TABLE IF EXISTS disaster_reports;
@@ -106,7 +107,10 @@ CREATE TABLE disaster_reports (
     evacuation_suggested_at TIMESTAMP NULL DEFAULT NULL,
     evacuation_confirmed_at TIMESTAMP NULL DEFAULT NULL,
     evacuation_confirmation_notes TEXT DEFAULT NULL,
-    status ENUM('submitted', 'reviewed', 'prioritized', 'relief_distributed') NOT NULL DEFAULT 'submitted',
+    proof_of_delivery_photo MEDIUMTEXT DEFAULT NULL COMMENT 'Base64 or data URL — delivery photo',
+    delivery_signature_data MEDIUMTEXT DEFAULT NULL COMMENT 'Base64 PNG signature pad export',
+    delivery_confirmed_at TIMESTAMP NULL DEFAULT NULL,
+    status ENUM('submitted', 'reviewed', 'prioritized', 'relief_distributed', 'relief_received') NOT NULL DEFAULT 'submitted',
     submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_dr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -205,6 +209,18 @@ CREATE TABLE system_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Key/value app settings (e.g. region-wide emergency broadcast banner)
+CREATE TABLE road_hazards (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    hazard_type ENUM('landslide', 'flood', 'blocked_road') NOT NULL DEFAULT 'blocked_road',
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    label VARCHAR(255) DEFAULT NULL,
+    created_by INT DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rh_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_hazard_type (hazard_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE system_settings (
     setting_key VARCHAR(80) PRIMARY KEY,
     setting_value TEXT,

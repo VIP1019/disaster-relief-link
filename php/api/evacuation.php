@@ -30,6 +30,18 @@ try {
             }
             break;
 
+        case 'list_nearby':
+            if ($method === 'GET') {
+                $lat = $_GET['latitude'] ?? $_GET['lat'] ?? null;
+                $lon = $_GET['longitude'] ?? $_GET['lng'] ?? $_GET['lon'] ?? null;
+                $muni = $_GET['municipality'] ?? 'Daet';
+                $reportBid = $_GET['report_barangay_id'] ?? $_GET['barangay_id'] ?? null;
+                $rows = $ec->listNearby($lat, $lon, $muni, $reportBid);
+                http_response_code(200);
+                echo json_encode(['success' => true, 'centers' => $rows]);
+            }
+            break;
+
         case 'get':
             if ($method === 'GET') {
                 $id = (int) ($_GET['id'] ?? 0);
