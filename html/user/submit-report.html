@@ -96,7 +96,7 @@
                     <div>
                         <!-- Impact Analysis -->
                         <div class="card">
-                            <div class="card-title">Impact Analysis</div>
+                            <div class="card-title">Impact Analysis & Casualties</div>
                             <div class="impact-grid">
                                 <div class="form-group">
                                     <label class="form-label">Affected Families</label>
@@ -105,6 +105,14 @@
                                 <div class="form-group">
                                     <label class="form-label">Damaged Houses</label>
                                     <input type="number" id="damagedHouses" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Injured Count</label>
+                                    <input type="number" id="injuredCount" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Deceased Count</label>
+                                    <input type="number" id="deathCount" class="form-control" value="0" min="0">
                                 </div>
                             </div>
 
@@ -205,6 +213,8 @@
                 description: document.getElementById('description').value,
                 affected_families: document.getElementById('affectedFamilies').value,
                 damaged_houses: document.getElementById('damagedHouses').value,
+                injured_count: document.getElementById('injuredCount').value || 0,
+                death_count: document.getElementById('deathCount').value || 0,
                 severity_level: document.getElementById('severityLevel').value,
                 incident_latitude: document.getElementById('incidentLat').value || null,
                 incident_longitude: document.getElementById('incidentLng').value || null,
