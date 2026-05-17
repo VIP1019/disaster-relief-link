@@ -63,6 +63,38 @@ try {
             }
             break;
 
+        case 'get_profile':
+            if (Auth::isLoggedIn()) {
+                $user = Auth::getCurrentUser();
+                $result = $auth->getProfile($user['id']);
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            }
+            break;
+
+        case 'update_profile':
+            if ($request_method === 'POST' && Auth::isLoggedIn()) {
+                $user = Auth::getCurrentUser();
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $result = $auth->updateProfile(
+                    $user['id'],
+                    $data['email'] ?? '',
+                    $data['full_name'] ?? '',
+                    $data['phone_number'] ?? null,
+                    $data['address'] ?? null,
+                    !empty($data['password']) ? $data['password'] : null
+                );
+                http_response_code($result['success'] ? 200 : 400);
+                echo json_encode($result);
+            } else {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid action']);

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReliefLink - Admin Profile</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
+        .profile-card { max-width: 640px; margin: 0 auto; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <aside class="sidebar" id="relief-sidebar-mount"></aside>
+
+        <main class="main-content">
+            <header class="top-nav">
+                <div>
+                    <h2 style="font-size: 20px;">Account Settings</h2>
+                    <p style="font-size: 13px; color: var(--text-subtle);">View and update your personal and administrative details.</p>
+                </div>
+            </header>
+
+            <div class="profile-card animate-fade-in">
+                <div class="card">
+                    <div class="card-title">Personal Profile Information</div>
+                    
+                    <form id="profileForm" novalidate>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" id="usernameInput" class="form-control" style="background: #f4f5f7; cursor: not-allowed;" readonly>
+                                <small style="color: var(--text-subtle); font-size: 11px;">Username cannot be modified.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Account Type</label>
+                                <input type="text" id="userTypeInput" class="form-control" style="background: #f4f5f7; cursor: not-allowed;" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" id="fullNameInput" class="form-control" required placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email Address *</label>
+                                <input type="email" id="emailInput" class="form-control" required placeholder="Enter email address">
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" id="phoneInput" class="form-control" placeholder="e.g. 09171234567">
+                            </div>
+                            <div class="form-group" id="barangayGroup">
+                                <label class="form-label">Assigned Barangay</label>
+                                <input type="text" id="barangayInput" class="form-control" style="background: #f4f5f7; cursor: not-allowed;" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 16px;">
+                            <label class="form-label">Physical Address</label>
+                            <textarea id="addressInput" class="form-control" rows="2" placeholder="Barangay Hall / Home Address"></textarea>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
+
+                        <div class="card-title" style="margin-bottom: 8px;">Change Password</div>
+                        <p style="font-size: 12px; color: var(--text-subtle); margin-bottom: 16px;">Leave blank if you do not want to change your password.</p>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" id="passwordInput" class="form-control" minlength="6" placeholder="At least 6 characters">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirm New Password</label>
+                                <input type="password" id="confirmPasswordInput" class="form-control" placeholder="Must match new password">
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary" id="saveBtn">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/relief-sidebar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await ReliefSidebar.mount();
+            if (!user) return;
+
+            const apiBase = ReliefSidebar.getApiBase();
+            loadProfile(apiBase);
+
+            const form = document.getElementById('profileForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const fullName = document.getElementById('fullNameInput').value.trim();
+                const email = document.getElementById('emailInput').value.trim();
+                const phone = document.getElementById('phoneInput').value.trim();
+                const address = document.getElementById('addressInput').value.trim();
+                const password = document.getElementById('passwordInput').value;
+                const confirmPassword = document.getElementById('confirmPasswordInput').value;
+
+                if (!fullName || !email) return;
+
+                if (password && password !== confirmPassword) {
+                    alert('Passwords do not match!');
+                    return;
+                }
+
+                const btn = document.getElementById('saveBtn');
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(apiBase + '/auth.php?action=update_profile', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            full_name: fullName,
+                            email: email,
+                            phone_number: phone,
+                            address: address,
+                            password: password
+                        })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Profile updated successfully!');
+                        document.getElementById('passwordInput').value = '';
+                        document.getElementById('confirmPasswordInput').value = '';
+                        loadProfile(apiBase);
+                    } else {
+                        alert(data.message || 'Profile update failed.');
+                    }
+                } catch (error) {
+                    alert('Network error occurred.');
+                } finally {
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        async function loadProfile(apiBase) {
+            try {
+                const res = await fetch(apiBase + '/auth.php?action=get_profile', { credentials: 'include' });
+                const data = await res.json();
+                if (data.success && data.profile) {
+                    const p = data.profile;
+                    document.getElementById('usernameInput').value = p.username;
+                    document.getElementById('userTypeInput').value = p.user_type === 'admin' ? 'MDRRMO Administrator' : 'Barangay Official';
+                    document.getElementById('fullNameInput').value = p.full_name || '';
+                    document.getElementById('emailInput').value = p.email || '';
+                    document.getElementById('phoneInput').value = p.phone_number || '';
+                    document.getElementById('addressInput').value = p.address || '';
+                    
+                    const brgyGroup = document.getElementById('barangayGroup');
+                    if (p.user_type === 'admin') {
+                        brgyGroup.style.display = 'none';
+                    } else {
+                        brgyGroup.style.display = 'block';
+                        document.getElementById('barangayInput').value = p.barangay_name || '';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load profile details:', e);
+            }
+        }
+    </script>
+    <script src="../../js/validation.js"></script>
+</body>
+</html>

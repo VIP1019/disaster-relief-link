@@ -165,6 +165,55 @@ class Auth {
             ];
         }
         return null;
+    /**
+     * Get user profile details
+     */
+    public function getProfile($userId) {
+        $query = "SELECT id, username, email, full_name, barangay_name, phone_number, address, user_type, is_active, created_at FROM {$this->table} WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows === 0) {
+            return ['success' => false, 'message' => 'User not found'];
+        }
+        return ['success' => true, 'profile' => $result->fetch_assoc()];
+    }
+
+    /**
+     * Update user profile details
+     */
+    public function updateProfile($userId, $email, $fullName, $phoneNumber, $address, $newPassword = null) {
+        if (empty($email) || empty($fullName)) {
+            return ['success' => false, 'message' => 'Email and Full Name are required'];
+        }
+        
+        $check = "SELECT id FROM {$this->table} WHERE email = ? AND id != ?";
+        $st = $this->conn->prepare($check);
+        $st->bind_param('si', $email, $userId);
+        $st->execute();
+        if ($st->get_result()->num_rows > 0) {
+            return ['success' => false, 'message' => 'Email address is already in use'];
+        }
+
+        if (!empty($newPassword)) {
+            $password_hash = password_hash($newPassword, PASSWORD_BCRYPT);
+            $q = "UPDATE {$this->table} SET email = ?, full_name = ?, phone_number = ?, address = ?, password_hash = ? WHERE id = ?";
+            $st2 = $this->conn->prepare($q);
+            $st2->bind_param('sssssi', $email, $fullName, $phoneNumber, $address, $password_hash, $userId);
+        } else {
+            $q = "UPDATE {$this->table} SET email = ?, full_name = ?, phone_number = ?, address = ? WHERE id = ?";
+            $st2 = $this->conn->prepare($q);
+            $st2->bind_param('ssssi', $email, $fullName, $phoneNumber, $address, $userId);
+        }
+
+        if ($st2->execute()) {
+            self::ensureSession();
+            $_SESSION['email'] = $email;
+            $_SESSION['full_name'] = $fullName;
+            return ['success' => true, 'message' => 'Profile updated successfully'];
+        }
+        return ['success' => false, 'message' => 'Profile update failed'];
     }
 }
 ?>
