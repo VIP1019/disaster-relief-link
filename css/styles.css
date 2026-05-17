@@ -271,6 +271,12 @@ a:hover {
     box-shadow: 0 0 0 2px rgba(76, 154, 255, 0.2);
 }
 
+/* Hide Microsoft Edge / IE default eye reveal button on password fields */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+}
+
 /* Badges */
 .badge {
     padding: 2px 8px;
