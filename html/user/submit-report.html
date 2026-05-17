@@ -23,6 +23,58 @@
         .severity-point { width: 12px; height: 12px; border-radius: 50%; background: #dfe1e6; z-index: 2; cursor: pointer; position: relative; }
         .severity-point.active { background: var(--primary); box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.2); }
         .severity-label { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--text-subtle); text-transform: uppercase; white-space: nowrap; }
+        body.map-fullscreen-active {
+            overflow: hidden !important;
+        }
+        body.map-fullscreen-active .sidebar {
+            display: none !important;
+        }
+        body.map-fullscreen-active .top-nav {
+            display: none !important;
+        }
+        body.map-fullscreen-active .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            max-width: 100vw !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+        }
+        body.map-fullscreen-active #sectorMap {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 99999 !important;
+            border-radius: 0 !important;
+            border: none !important;
+        }
+        body.map-fullscreen-active #mapHeaderControls {
+            position: fixed !important;
+            right: 20px !important;
+            top: 20px !important;
+            z-index: 100000 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            padding: 10px 16px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.3) !important;
+            display: flex !important;
+            gap: 14px !important;
+            align-items: center !important;
+        }
+        body.map-fullscreen-active #mapSubInstructions {
+            position: fixed !important;
+            left: 20px !important;
+            bottom: 20px !important;
+            z-index: 100000 !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            color: #fff !important;
+            padding: 8px 14px !important;
+            border-radius: 6px !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+            margin: 0 !important;
+            font-size: 11px !important;
+        }
     </style>
 </head>
 <body>
@@ -70,9 +122,27 @@
                             </div>
                             <input type="hidden" id="disasterType" name="disasterType" required>
 
-                            <label class="form-label">Geographic Sector Mapping</label>
-                            <p style="font-size: 12px; color: var(--text-subtle); margin: 4px 0 8px;">Drag the pin to the incident location. Coordinates are saved with your report for MDRRMO mapping.</p>
-                            <div id="sectorMap" style="height: 220px; border-radius: 8px; border: 1px solid var(--border); z-index: 1;"></div>
+                            <div id="mapWrapper" style="position: relative;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;" id="mapHeaderControls">
+                                    <label class="form-label" style="margin:0;">Geographic Sector Mapping</label>
+                                    <div style="display:flex; gap:14px; align-items:center;">
+                                        <button type="button" id="locateUserBtn" style="font-size:11px; color:var(--primary); background:none; border:none; cursor:pointer; font-weight:600; text-decoration:underline; display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;fill:none;"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"></path><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2M12 20v2M20 12h2M2 12h2"></path></svg>
+                                            Find My Location
+                                        </button>
+                                        <button type="button" id="toggleMapSize" style="font-size:11px; color:var(--primary); background:none; border:none; cursor:pointer; font-weight:600; text-decoration:underline; display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;fill:none;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
+                                            Expand Fullscreen Map
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="mapCoordsMonitor" style="display:none; margin-bottom:12px; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.08); padding:10px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.12);">
+                                    <span style="font-size:13px; font-weight:600; color:#fff;">Precise Sector Pinpoint Mode</span>
+                                    <span id="coordsDisplayVal" style="font-family:monospace; font-size:12px; color:#a5b4fc;">Lat: --, Lng: --</span>
+                                </div>
+                                <p style="font-size: 12px; color: var(--text-subtle); margin: 0 0 8px;" id="mapSubInstructions">Drag the pin to the incident location. Coordinates are saved with your report for MDRRMO mapping.</p>
+                                <div id="sectorMap" style="height: 220px; border-radius: 8px; border: 1px solid var(--border); z-index: 1;"></div>
+                            </div>
                             <div class="form-group" style="margin-top: 10px;">
                                 <label class="form-label">Sector label (optional)</label>
                                 <input type="text" id="sectorLabel" class="form-control" placeholder="e.g. coastal sitio, purok, landmark">
@@ -86,10 +156,104 @@
                             <div class="card-title">
                                 <span style="display: flex; align-items: center; gap: 8px;">
                                     <svg class="icon" style="color: var(--primary);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                    Situational Assessment
+                                    Situational Assessment & Field Notes
                                 </span>
                             </div>
-                            <textarea id="description" class="form-control" rows="6" placeholder="Provide brief observations, immediate needs, or prioritized concerns..."></textarea>
+                            <textarea id="description" class="form-control" rows="4" placeholder="Provide brief observations, immediate needs, or prioritized concerns..."></textarea>
+                        </div>
+
+                        <!-- Vulnerable Demographics -->
+                        <div class="card animate-fade-in">
+                            <div class="card-title">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" style="color: var(--primary);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    Vulnerable Demographics (Real-world Logistics)
+                                </span>
+                            </div>
+                            <p style="font-size:12px;color:var(--text-subtle);margin-bottom:12px;">Capture vulnerable individuals to coordinate baby formulas, medicines, and specialized care packages.</p>
+                            <div class="impact-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Infants / Children (Pcs)</label>
+                                    <input type="number" id="v_children" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Elderly / Seniors (Pcs)</label>
+                                    <input type="number" id="v_seniors" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Pregnant / Lactating</label>
+                                    <input type="number" id="v_pregnant" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PWDs (Disabled)</label>
+                                    <input type="number" id="v_pwd" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lifelines & Utility Status -->
+                        <div class="card animate-fade-in">
+                            <div class="card-title">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" style="color: var(--primary);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                                    LGU Utility & Lifeline Status
+                                </span>
+                            </div>
+                            <p style="font-size:12px;color:var(--text-subtle);margin-bottom:12px;">Map the operational state of core utility lifelines to coordinate clearing equipment and heavy tankers.</p>
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Electricity Grid Status</label>
+                                    <select id="status_power" class="form-control" required>
+                                        <option value="" disabled selected hidden>-- Select Power Grid Status --</option>
+                                        <option value="Operational">Fully Operational</option>
+                                        <option value="Interrupted">Partial Outages / Fluctuation</option>
+                                        <option value="Outage">Complete Blackout</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Water System Status</label>
+                                    <select id="status_water" class="form-control" required>
+                                        <option value="" disabled selected hidden>-- Select Water System Status --</option>
+                                        <option value="Operational">Fully Functional</option>
+                                        <option value="Interrupted">Low Pressure / Interrupted</option>
+                                        <option value="Contaminated">Contaminated / Unsafe</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Road & Transport Accessibility</label>
+                                    <select id="status_road" class="form-control" required>
+                                        <option value="" disabled selected hidden>-- Select Road Passage Status --</option>
+                                        <option value="Passable">Fully Passable</option>
+                                        <option value="Light Only">Light Vehicles Only</option>
+                                        <option value="Blocked">Completely Blocked / Flooded</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resource Requirements Log -->
+                        <div class="card animate-fade-in">
+                            <div class="card-title">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" style="color: var(--primary);"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                                    Specific Supply Quantities Required
+                                </span>
+                            </div>
+                            <p style="font-size:12px;color:var(--text-subtle);margin-bottom:12px;">Quantify exactly how many resource packages are needed to feed priority ranking calculators.</p>
+                            <div class="impact-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Food Packs Needed (Pcs)</label>
+                                    <input type="number" id="req_food" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Hygiene Kits Needed (Pcs)</label>
+                                    <input type="number" id="req_hygiene" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label class="form-label">Drinking Water Needed (Liters)</label>
+                                    <input type="number" id="req_water" class="form-control" value="0" min="0">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -199,18 +363,94 @@
             });
         });
 
+        // Map controls
+        document.getElementById('toggleMapSize').addEventListener('click', () => {
+            const btn = document.getElementById('toggleMapSize');
+            const header = document.getElementById('mapHeaderControls');
+            const isFullscreen = document.body.classList.toggle('map-fullscreen-active');
+            
+            const label = header ? header.querySelector('label') : null;
+            if (isFullscreen) {
+                if (label) label.style.display = 'none';
+                btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;fill:none;"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"></path></svg> Confirm Location & Return`;
+                btn.style.color = '#fff';
+                btn.style.background = 'var(--primary)';
+                btn.style.padding = '6px 12px';
+                btn.style.borderRadius = '6px';
+                btn.style.textDecoration = 'none';
+            } else {
+                if (label) label.style.display = '';
+                btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2.5;fill:none;"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg> Expand Fullscreen Map`;
+                btn.style.color = 'var(--primary)';
+                btn.style.background = 'none';
+                btn.style.padding = '0';
+                btn.style.textDecoration = 'underline';
+            }
+            setTimeout(() => {
+                sectorMap.invalidateSize();
+            }, 300);
+        });
+
+        document.getElementById('locateUserBtn').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const userLat = pos.coords.latitude;
+                const userLng = pos.coords.longitude;
+                if (sectorMarker) {
+                    sectorMarker.setLatLng([userLat, userLng]);
+                    sectorMap.setView([userLat, userLng], 16);
+                    document.getElementById('incidentLat').value = userLat.toFixed(6);
+                    document.getElementById('incidentLng').value = userLng.toFixed(6);
+                }
+            }, (err) => {
+                alert('Could not retrieve your physical location. Make sure GPS permissions are allowed.');
+            });
+        });
+
         document.getElementById('incidentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const type = document.getElementById('disasterType').value;
             if (!type) { alert('Please select a disaster type'); return; }
 
+            const power = document.getElementById('status_power').value;
+            const water = document.getElementById('status_water').value;
+            const road = document.getElementById('status_road').value;
+            if (!power || !water || !road) {
+                alert('Please specify the status of all utility lifelines (Power, Water, and Road Accessibility) so MDRRMO has accurate operational data.');
+                return;
+            }
+
             const btn = e.target.querySelector('button[type="submit"]');
             btn.classList.add('btn-loading');
             btn.disabled = true;
 
+            const descriptionObj = {
+                is_structured: true,
+                notes: document.getElementById('description').value.trim(),
+                vulnerable: {
+                    children: +document.getElementById('v_children').value || 0,
+                    seniors: +document.getElementById('v_seniors').value || 0,
+                    pregnant: +document.getElementById('v_pregnant').value || 0,
+                    pwd: +document.getElementById('v_pwd').value || 0
+                },
+                lifelines: {
+                    power: document.getElementById('status_power').value,
+                    water: document.getElementById('status_water').value,
+                    road: document.getElementById('status_road').value
+                },
+                requests: {
+                    food: +document.getElementById('req_food').value || 0,
+                    hygiene: +document.getElementById('req_hygiene').value || 0,
+                    water: +document.getElementById('req_water').value || 0
+                }
+            };
+
             const formData = {
                 disaster_type: type,
-                description: document.getElementById('description').value,
+                description: JSON.stringify(descriptionObj),
                 affected_families: document.getElementById('affectedFamilies').value,
                 damaged_houses: document.getElementById('damagedHouses').value,
                 injured_count: document.getElementById('injuredCount').value || 0,
@@ -266,11 +506,17 @@
             iconSize: [24, 24],
             iconAnchor: [12, 12]
         });
-        sectorMarker = L.marker([lat, lng], { draggable: true, icon: submitIcon }).addTo(sectorMap).bindPopup('Incident pin — drag to exact location<br><small>' + label + '</small>').openPopup();
+        sectorMarker = L.marker([lat, lng], { draggable: true, icon: submitIcon }).addTo(sectorMap).bindPopup('Location Selected:<br><strong>Lat: ' + lat.toFixed(6) + ', Lng: ' + lng.toFixed(6) + '</strong>').openPopup();
         function syncHidden() {
             const p = sectorMarker.getLatLng();
             document.getElementById('incidentLat').value = p.lat.toFixed(6);
             document.getElementById('incidentLng').value = p.lng.toFixed(6);
+            sectorMarker.setPopupContent('Location Selected:<br><strong>Lat: ' + p.lat.toFixed(6) + ', Lng: ' + p.lng.toFixed(6) + '</strong>').openPopup();
+            
+            const monitor = document.getElementById('coordsDisplayVal');
+            if (monitor) {
+                monitor.textContent = 'Lat: ' + p.lat.toFixed(6) + ', Lng: ' + p.lng.toFixed(6);
+            }
         }
         sectorMarker.on('dragend', syncHidden);
         sectorMap.on('click', (ev) => {

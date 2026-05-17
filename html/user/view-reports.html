@@ -59,8 +59,8 @@
             </div>
 
             <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center; padding:24px;">
-                <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;">
-                    <h3 style="margin-bottom:16px;">Edit report</h3>
+                <div style="background:#fff;border-radius:12px;max-width:600px;width:100%;padding:24px;max-height:90vh;overflow-y:auto;">
+                    <h3 style="margin-bottom:16px;">Edit Report</h3>
                     <input type="hidden" id="editReportId">
                     <div class="form-group"><label class="form-label">Disaster type</label><input type="text" id="editDisasterType" class="form-control"></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -71,11 +71,75 @@
                         <div class="form-group"><label class="form-label">Injured</label><input type="number" id="editInj" class="form-control" min="0"></div>
                         <div class="form-group"><label class="form-label">Deaths</label><input type="number" id="editDeath" class="form-control" min="0"></div>
                     </div>
-                    <div class="form-group"><label class="form-label">Description</label><textarea id="editDesc" class="form-control" rows="4"></textarea></div>
+                    <div class="form-group"><label class="form-label">Field Notes / Observations</label><textarea id="editDesc" class="form-control" rows="4"></textarea></div>
+
+                    <!-- Vulnerable Demographics Section -->
+                    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+                        <h4 style="font-size:12px;color:var(--primary);margin-bottom:12px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Vulnerable Demographics</h4>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="form-group"><label class="form-label">Children (Pcs)</label><input type="number" id="editVulnChildren" class="form-control" min="0" value="0"></div>
+                            <div class="form-group"><label class="form-label">Seniors (Pcs)</label><input type="number" id="editVulnSeniors" class="form-control" min="0" value="0"></div>
+                            <div class="form-group"><label class="form-label">Pregnant / Lactating</label><input type="number" id="editVulnPregnant" class="form-control" min="0" value="0"></div>
+                            <div class="form-group"><label class="form-label">PWDs (Disabled)</label><input type="number" id="editVulnPwd" class="form-control" min="0" value="0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Utility status Section -->
+                    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+                        <h4 style="font-size:12px;color:var(--primary);margin-bottom:12px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Utility & Lifeline Status</h4>
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Electricity</label>
+                                <select id="editPowerStatus" class="form-control" style="font-size:12px;padding:6px;">
+                                    <option value="Operational">Operational</option>
+                                    <option value="Interrupted">Interrupted</option>
+                                    <option value="Outage">Outage</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Water Supply</label>
+                                <select id="editWaterStatus" class="form-control" style="font-size:12px;padding:6px;">
+                                    <option value="Operational">Operational</option>
+                                    <option value="Interrupted">Interrupted</option>
+                                    <option value="Contaminated">Contaminated</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Road Passage</label>
+                                <select id="editRoadStatus" class="form-control" style="font-size:12px;padding:6px;">
+                                    <option value="Passable">Passable</option>
+                                    <option value="Light Only">Light Only</option>
+                                    <option value="Blocked">Blocked</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supply requests Section -->
+                    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;margin-bottom:20px;">
+                        <h4 style="font-size:12px;color:var(--primary);margin-bottom:12px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Supply Resources Requested</h4>
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
+                            <div class="form-group"><label class="form-label">Food Packs (Pcs)</label><input type="number" id="editReqFood" class="form-control" min="0" value="0"></div>
+                            <div class="form-group"><label class="form-label">Hygiene Kits (Pcs)</label><input type="number" id="editReqHygiene" class="form-control" min="0" value="0"></div>
+                            <div class="form-group"><label class="form-label">Drinking Water (L)</label><input type="number" id="editReqWater" class="form-control" min="0" value="0"></div>
+                        </div>
+                    </div>
+
                     <div style="display:flex;gap:12px;margin-top:8px;">
                         <button type="button" class="btn btn-primary" id="saveEditReport">Save</button>
                         <button type="button" class="btn" style="border:1px solid var(--border);" id="cancelEditReport">Cancel</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Detail Modal -->
+            <div id="detailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:24px;" onclick="if(event.target.id==='detailModal')closeDetailModal()">
+                <div class="card" style="max-width: 600px; width: 100%; margin: 0; position:relative; max-height:90vh; overflow-y:auto; background:#fff; border-radius:12px; padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+                        <h3 style="margin:0; font-size:18px;">Incident Report Details</h3>
+                        <button type="button" onclick="closeDetailModal()" style="border:none; background:none; cursor:pointer; font-size:24px; line-height:1; color:var(--text-subtle);">&times;</button>
+                    </div>
+                    <div id="detailModalContent"></div>
                 </div>
             </div>
         </main>
@@ -84,6 +148,7 @@
     <script src="../js/relief-sidebar.js"></script>
     <script>
         const api = '../../php/api';
+        let activeEditDescriptionObj = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
@@ -133,15 +198,16 @@
                     const when = r.submitted_at ? new Date(r.submitted_at.replace(' ', 'T')).toLocaleString() : '—';
                     const canEdit = r.status === 'submitted';
                     return `<tr>
-                        <td><span class="report-id">#${r.id}</span></td>
+                        <td><button type="button" class="report-id" style="cursor:pointer;border:none;" onclick="openReportDetail(${r.id})">REP-2024-${String(r.id).padStart(4, '0')}</button></td>
                         <td style="font-size:12px;">${when}</td>
                         <td><span class="badge badge-info">${esc((r.disaster_type || '').toUpperCase())}</span></td>
                         <td>${statusBadge(r.status)}</td>
                         <td><span class="badge badge-${r.severity_level === 'critical' ? 'danger' : 'primary'}">${esc((r.severity_level || '').toUpperCase())}</span></td>
                         <td>${evacuationCell(r)}</td>
                         <td>
+                            <button type="button" class="btn btn-sm btn-primary" style="margin-right:4px;background:#f4f5f7;color:var(--text-main);border:1px solid var(--border);" onclick="openReportDetail(${r.id})">Details</button>
                             ${canEdit ? `<button type="button" class="btn btn-sm btn-primary" onclick="openEdit(${r.id})">Edit</button>
-                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Report is under review and cannot be modified.</span>'}
+                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Reviewed</span>'}
                         </td>
                     </tr>`;
                 }).join('');
@@ -154,18 +220,97 @@
             if (!data.success || !data.report) return;
             const r = data.report;
             if (r.status !== 'submitted') { alert('Only submitted reports can be edited.'); return; }
+            
             document.getElementById('editReportId').value = r.id;
             document.getElementById('editDisasterType').value = r.disaster_type || '';
             document.getElementById('editAff').value = r.affected_families;
             document.getElementById('editDam').value = r.damaged_houses;
             document.getElementById('editInj').value = r.injured_count;
             document.getElementById('editDeath').value = r.death_count;
-            document.getElementById('editDesc').value = r.description || '';
+
+            // Reset structured inputs to default fallbacks
+            document.getElementById('editVulnChildren').value = 0;
+            document.getElementById('editVulnSeniors').value = 0;
+            document.getElementById('editVulnPregnant').value = 0;
+            document.getElementById('editVulnPwd').value = 0;
+            document.getElementById('editPowerStatus').value = 'Operational';
+            document.getElementById('editWaterStatus').value = 'Operational';
+            document.getElementById('editRoadStatus').value = 'Passable';
+            document.getElementById('editReqFood').value = 0;
+            document.getElementById('editReqHygiene').value = 0;
+            document.getElementById('editReqWater').value = 0;
+
+            activeEditDescriptionObj = null;
+            let descText = r.description || '';
+            if (descText.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(descText);
+                    if (parsed && parsed.is_structured) {
+                        activeEditDescriptionObj = parsed;
+                        descText = parsed.notes || '';
+                        
+                        const vuln = parsed.vulnerable || {};
+                        document.getElementById('editVulnChildren').value = vuln.children || 0;
+                        document.getElementById('editVulnSeniors').value = vuln.seniors || 0;
+                        document.getElementById('editVulnPregnant').value = vuln.pregnant || 0;
+                        document.getElementById('editVulnPwd').value = vuln.pwd || 0;
+
+                        const life = parsed.lifelines || {};
+                        document.getElementById('editPowerStatus').value = life.power || 'Operational';
+                        document.getElementById('editWaterStatus').value = life.water || 'Operational';
+                        document.getElementById('editRoadStatus').value = life.road || 'Passable';
+
+                        const req = parsed.requests || {};
+                        document.getElementById('editReqFood').value = req.food || 0;
+                        document.getElementById('editReqHygiene').value = req.hygiene || 0;
+                        document.getElementById('editReqWater').value = req.water || 0;
+                    }
+                } catch (e) {}
+            }
+            document.getElementById('editDesc').value = descText;
             document.getElementById('editModal').style.display = 'flex';
         }
 
         async function saveEdit() {
             const id = +document.getElementById('editReportId').value;
+            let descValue = document.getElementById('editDesc').value;
+            
+            const isStructured = activeEditDescriptionObj || 
+                                 +document.getElementById('editVulnChildren').value > 0 ||
+                                 +document.getElementById('editVulnSeniors').value > 0 ||
+                                 +document.getElementById('editVulnPregnant').value > 0 ||
+                                 +document.getElementById('editVulnPwd').value > 0 ||
+                                 document.getElementById('editPowerStatus').value !== 'Operational' ||
+                                 document.getElementById('editWaterStatus').value !== 'Operational' ||
+                                 document.getElementById('editRoadStatus').value !== 'Passable' ||
+                                 +document.getElementById('editReqFood').value > 0 ||
+                                 +document.getElementById('editReqHygiene').value > 0 ||
+                                 +document.getElementById('editReqWater').value > 0;
+
+            if (isStructured) {
+                const struct = {
+                    is_structured: true,
+                    notes: descValue.trim(),
+                    vulnerable: {
+                        children: +document.getElementById('editVulnChildren').value,
+                        seniors: +document.getElementById('editVulnSeniors').value,
+                        pregnant: +document.getElementById('editVulnPregnant').value,
+                        pwd: +document.getElementById('editVulnPwd').value
+                    },
+                    lifelines: {
+                        power: document.getElementById('editPowerStatus').value,
+                        water: document.getElementById('editWaterStatus').value,
+                        road: document.getElementById('editRoadStatus').value
+                    },
+                    requests: {
+                        food: +document.getElementById('editReqFood').value,
+                        hygiene: +document.getElementById('editReqHygiene').value,
+                        water: +document.getElementById('editReqWater').value
+                    }
+                };
+                descValue = JSON.stringify(struct);
+            }
+
             const body = {
                 report_id: id,
                 disaster_type: document.getElementById('editDisasterType').value,
@@ -173,7 +318,7 @@
                 damaged_houses: +document.getElementById('editDam').value,
                 injured_count: +document.getElementById('editInj').value,
                 death_count: +document.getElementById('editDeath').value,
-                description: document.getElementById('editDesc').value
+                description: descValue
             };
             const res = await fetch(api + '/reports.php?action=update_own', {
                 method: 'PUT',
@@ -217,6 +362,141 @@
             } else {
                 alert(j.message || 'Confirmation failed');
             }
+        }
+
+        async function openReportDetail(id) {
+            const content = document.getElementById('detailModalContent');
+            content.innerHTML = '<p style="color:var(--text-subtle);">Loading...</p>';
+            document.getElementById('detailModal').style.display = 'flex';
+            try {
+                const res = await fetch(api + '/reports.php?action=get&report_id=' + id, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success || !data.report) {
+                    content.innerHTML = '<p>Could not load report.</p>';
+                    return;
+                }
+                const r = data.report;
+                const when = r.submitted_at ? new Date(String(r.submitted_at).replace(' ','T')).toLocaleString() : '—';
+                content.innerHTML = `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;">
+                        <div><strong>Report Code</strong><br>REP-2024-${String(r.id).padStart(4, '0')}</div>
+                        <div><strong>Disaster Type</strong><br><span class="badge badge-info">${esc((r.disaster_type || '').toUpperCase())}</span></div>
+                        <div><strong>Submission Status</strong><br>${statusBadge(r.status)}</div>
+                        <div><strong>MDRRMO Severity</strong><br><span class="badge badge-${r.severity_level === 'critical' ? 'danger' : 'primary'}">${esc((r.severity_level || '').toUpperCase())}</span></div>
+                        <div><strong>Affected Families</strong><br>${esc(r.affected_families)}</div>
+                        <div><strong>Damaged Houses</strong><br>${esc(r.damaged_houses)}</div>
+                        <div><strong>Injured / Deaths</strong><br>${esc(r.injured_count)} / ${esc(r.death_count)}</div>
+                        <div><strong>Logged Date</strong><br>${esc(when)}</div>
+                    </div>
+                    <div style="margin-top:16px;margin-bottom:16px;">
+                        <strong style="display:block;margin-bottom:8px;font-size:13px;color:var(--text-main);">Situational Assessment & Logistical Intel</strong>
+                        ${renderDescriptionField(r.description)}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = '<p>An error occurred while loading details.</p>';
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        function renderDescriptionField(rawText) {
+            if (!rawText) return '<span style="color:var(--text-subtle);">—</span>';
+            try {
+                if (rawText.trim().startsWith('{')) {
+                    const d = JSON.parse(rawText);
+                    if (d && d.is_structured) {
+                        const notes = d.notes ? `<div style="margin-bottom:14px;background:#f8f9fa;padding:12px;border-radius:6px;border-left:3px solid var(--primary);font-style:italic;color:var(--text-main); font-size:13px;">"${esc(d.notes)}"</div>` : '<div style="color:var(--text-subtle);margin-bottom:10px;font-style:italic;font-size:13px;">No field notes attached.</div>';
+                        
+                        // Vulnerable Grid
+                        const vuln = d.vulnerable || {};
+                        const vulnerableHtml = `
+                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
+                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                                    Vulnerable Demographics
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;text-align:center;">
+                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Children</div>
+                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.children || 0)}</div>
+                                    </div>
+                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Seniors</div>
+                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.seniors || 0)}</div>
+                                    </div>
+                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">Pregnant</div>
+                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pregnant || 0)}</div>
+                                    </div>
+                                    <div style="background:#f4f5f7;padding:8px;border-radius:6px;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;font-weight:700;">PWDs</div>
+                                        <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-top:2px;">${esc(vuln.pwd || 0)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Lifelines Grid
+                        const life = d.lifelines || {};
+                        const powerClass = life.power === 'Outage' ? 'danger' : (life.power === 'Interrupted' ? 'warning' : 'success');
+                        const waterClass = life.water === 'Contaminated' ? 'danger' : (life.water === 'Interrupted' ? 'warning' : 'success');
+                        const roadClass = life.road === 'Blocked' ? 'danger' : (life.road === 'Light Only' ? 'warning' : 'success');
+                        
+                        const lifelinesHtml = `
+                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
+                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                                    Utility & Lifeline Status
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
+                                    <div style="border-left:4px solid var(--${powerClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Electricity</div>
+                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.power || 'Unknown')}</div>
+                                    </div>
+                                    <div style="border-left:4px solid var(--${waterClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Water Supply</div>
+                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.water || 'Unknown')}</div>
+                                    </div>
+                                    <div style="border-left:4px solid var(--${roadClass});padding:6px 10px;background:#fafbfc;border-radius:0 4px 4px 0;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Road Passage</div>
+                                        <div style="font-size:11px;font-weight:700;margin-top:2px;color:var(--text-main);">${esc(life.road || 'Unknown')}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Supplies Request
+                        const req = d.requests || {};
+                        const requestsHtml = `
+                            <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;">
+                                <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                                    Supply Resources Requested
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;text-align:center;">
+                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Food Packs</div>
+                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.food || 0)} Pcs</div>
+                                    </div>
+                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Hygiene Kits</div>
+                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.hygiene || 0)} Pcs</div>
+                                    </div>
+                                    <div style="border:1px solid var(--border);padding:8px;border-radius:6px;background:#fff;">
+                                        <div style="font-size:9px;color:var(--text-subtle);text-transform:uppercase;">Drinking Water</div>
+                                        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:2px;">${esc(req.water || 0)} Ltrs</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        return notes + vulnerableHtml + lifelinesHtml + requestsHtml;
+                    }
+                }
+            } catch (e) { console.warn("JSON parse error for description", e); }
+            
+            // Fallback for simple plain text reports
+            return `<div style="background:#f8f9fa;padding:12px;border-radius:6px;color:var(--text-subtle);white-space:pre-wrap;font-size:13px;">${esc(rawText)}</div>`;
         }
     </script>
 </body>
