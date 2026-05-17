@@ -272,8 +272,8 @@ a:hover {
 }
 
 /* Hide Microsoft Edge / IE default eye reveal button on password fields */
-input[type="password"]::-ms-reveal,
-input[type="password"]::-ms-clear {
+::-ms-reveal,
+::-ms-clear {
     display: none !important;
 }
 
