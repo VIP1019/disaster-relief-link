@@ -77,12 +77,18 @@
 
                     <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" id="password" class="form-control" required placeholder="••••••••">
+                        <div style="position: relative;">
+                            <input type="password" id="password" class="form-control" required placeholder="••••••••">
+                            <button type="button" class="password-toggle" onclick="togglePass('password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-subtle); padding: 0;">👁️</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Confirm Password</label>
-                        <input type="password" id="confirmPassword" class="form-control" required placeholder="••••••••">
+                        <div style="position: relative;">
+                            <input type="password" id="confirmPassword" class="form-control" required placeholder="••••••••">
+                            <button type="button" class="password-toggle" onclick="togglePass('confirmPassword')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-subtle); padding: 0;">👁️</button>
+                        </div>
                     </div>
                 </div>
 
@@ -110,6 +116,15 @@
     </div>
 
     <script>
+        function togglePass(id) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');

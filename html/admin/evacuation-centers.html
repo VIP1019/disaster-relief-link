@@ -82,7 +82,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Contact phone</label>
-                        <input type="text" id="ecPhone" class="form-control">
+                        <input type="text" id="ecPhone" class="form-control" pattern="^(09|\+639)\d{9}$" title="Valid Philippine mobile number (e.g. 09171234567)">
                     </div>
                     <div class="form-group" style="grid-column:1/-1;">
                         <label class="form-label">Facilities</label>
@@ -117,7 +117,7 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="form-group"><label class="form-label">Contact</label><input type="text" id="editContact" class="form-control"></div>
-                <div class="form-group"><label class="form-label">Phone</label><input type="text" id="editPhone" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Phone</label><input type="text" id="editPhone" class="form-control" pattern="^(09|\+639)\d{9}$" title="Valid Philippine mobile number (e.g. 09171234567)"></div>
             </div>
             <div class="form-group"><label class="form-label">Facilities</label><input type="text" id="editFac" class="form-control"></div>
             <div class="form-group"><label class="form-label">Status</label>
@@ -214,6 +214,12 @@
 
         document.getElementById('ecForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const cap = +document.getElementById('ecCap').value;
+            const occ = +document.getElementById('ecOcc').value;
+            if (occ > cap) {
+                await ReliefUI.alert({ title: 'Invalid Occupancy', message: 'Current occupancy cannot exceed maximum capacity.' });
+                return;
+            }
             const body = {
                 barangay_id: +document.getElementById('ecBarangay').value,
                 center_name: document.getElementById('ecName').value,
@@ -241,6 +247,12 @@
         });
 
         document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const cap = +document.getElementById('editCap').value;
+            const occ = +document.getElementById('editOcc').value;
+            if (occ > cap) {
+                await ReliefUI.alert({ title: 'Invalid Occupancy', message: 'Current occupancy cannot exceed maximum capacity.' });
+                return;
+            }
             const body = {
                 id: +document.getElementById('editId').value,
                 barangay_id: +document.getElementById('editBarangay').value,
@@ -273,6 +285,21 @@
             document.getElementById('ecForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
             setTimeout(() => document.getElementById('ecName').focus(), 250);
         });
+
+        function autoSetStatus(capEl, occEl, statusEl) {
+            const cap = +document.getElementById(capEl).value;
+            const occ = +document.getElementById(occEl).value;
+            const st = document.getElementById(statusEl);
+            if (cap > 0 && occ >= cap) {
+                st.value = 'full';
+            } else if (st.value === 'full' && occ < cap) {
+                st.value = 'open';
+            }
+        }
+        document.getElementById('ecCap').addEventListener('input', () => autoSetStatus('ecCap', 'ecOcc', 'ecStatus'));
+        document.getElementById('ecOcc').addEventListener('input', () => autoSetStatus('ecCap', 'ecOcc', 'ecStatus'));
+        document.getElementById('editCap').addEventListener('input', () => autoSetStatus('editCap', 'editOcc', 'editStatus'));
+        document.getElementById('editOcc').addEventListener('input', () => autoSetStatus('editCap', 'editOcc', 'editStatus'));
 
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();

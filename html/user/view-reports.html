@@ -141,7 +141,7 @@
                         <td>${evacuationCell(r)}</td>
                         <td>
                             ${canEdit ? `<button type="button" class="btn btn-sm btn-primary" onclick="openEdit(${r.id})">Edit</button>
-                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Locked</span>'}
+                            <button type="button" class="btn btn-sm" style="border:1px solid var(--border);margin-left:4px;" onclick="deleteReport(${r.id})">Delete</button>` : '<span style="font-size:11px;color:var(--text-subtle);">Report is under review and cannot be modified.</span>'}
                         </td>
                     </tr>`;
                 }).join('');

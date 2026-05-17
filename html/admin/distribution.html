@@ -72,20 +72,7 @@
                                 </tr>
                             </thead>
                             <tbody id="distributionTableBody">
-                                <tr>
-                                    <td><div style="font-weight: 600;">Poblacion</div><div style="font-size: 11px; color: var(--text-subtle);">Batch #RL-2024-008</div></td>
-                                    <td>142 Units</td>
-                                    <td><span class="badge badge-success">Delivered</span></td>
-                                    <td>Oct 12, 09:45 AM</td>
-                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Details</button></td>
-                                </tr>
-                                <tr>
-                                    <td><div style="font-weight: 600;">Camambugan</div><div style="font-size: 11px; color: var(--text-subtle);">Batch #RL-2024-009</div></td>
-                                    <td>88 Units</td>
-                                    <td><span class="badge badge-warning">En Route</span></td>
-                                    <td>Oct 12, 11:20 AM</td>
-                                    <td><button class="btn btn-sm" style="border: 1px solid var(--border);">Track</button></td>
-                                </tr>
+                                <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-subtle);">Loading distribution records…</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -184,8 +171,12 @@
                 }
 
                 if (invRes.success && invRes.inventory) {
+                    window.__invMap = {};
                     const select = document.getElementById('distItem');
-                    select.innerHTML = invRes.inventory.map(i => `<option value="${i.id}">${i.item_name} (${i.quantity} avail)</option>`).join('');
+                    select.innerHTML = invRes.inventory.map(i => {
+                        window.__invMap[i.id] = parseInt(i.quantity, 10);
+                        return `<option value="${i.id}">${i.item_name} (${i.quantity} avail)</option>`;
+                    }).join('');
                 }
             } catch (error) { console.error('Load error:', error); }
         }
@@ -317,10 +308,20 @@
             btn.disabled = true;
             btn.innerHTML = 'Processing...';
 
+            const invId = parseInt(document.getElementById('distItem').value, 10);
+            const qty = parseInt(document.getElementById('distQty').value, 10);
+            const avail = window.__invMap ? window.__invMap[invId] : 0;
+            if (qty > avail) {
+                await ReliefUI.alert({ title: 'Insufficient Stock', message: `Error: Only ${avail} units available in stock. Entered: ${qty}.` });
+                btn.disabled = false;
+                btn.innerHTML = 'Confirm Deployment';
+                return;
+            }
+
             const formData = {
                 barangay_name: document.getElementById('distBarangay').value,
-                inventory_id: parseInt(document.getElementById('distItem').value, 10),
-                quantity: parseInt(document.getElementById('distQty').value, 10)
+                inventory_id: invId,
+                quantity: qty
             };
 
             try {
@@ -332,19 +333,19 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('Distribution record created successfully.');
+                    await ReliefUI.alert({ title: 'Deployment confirmed', message: 'Distribution record created successfully.' });
                     btn.disabled = false;
                     btn.innerHTML = 'Confirm Deployment';
                     document.getElementById('distQty').value = '';
                     await loadDistributions();
                     await loadData();
                 } else {
-                    alert(data.message || 'Could not record distribution.');
+                    await ReliefUI.alert({ title: 'Error', message: data.message || 'Could not record distribution.' });
                     btn.disabled = false;
                     btn.innerHTML = 'Confirm Deployment';
                 }
             } catch (error) {
-                alert('System error.');
+                await ReliefUI.alert({ title: 'Error', message: 'System error. Please try again.' });
                 btn.disabled = false;
                 btn.innerHTML = 'Confirm Deployment';
             }

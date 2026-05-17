@@ -86,22 +86,7 @@
                             <svg class="icon" style="color: var(--danger);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
                         </div>
                         <div id="alertsContainer">
-                            <div class="alert-item critical">
-                                <div style="flex: 1;">
-                                    <div style="font-size: 13px; font-weight: 700;">Sterile Bandages</div>
-                                    <div style="font-size: 11px; color: var(--text-subtle);">Warehouse B, Shelf 4</div>
-                                    <div style="font-size: 11px; color: var(--danger); font-weight: 700; margin-top: 4px;">5% LEFT</div>
-                                </div>
-                                <button class="btn btn-sm btn-primary" style="font-size: 10px;">Request</button>
-                            </div>
-                            <div class="alert-item">
-                                <div style="flex: 1;">
-                                    <div style="font-size: 13px; font-weight: 700;">Infant Formula</div>
-                                    <div style="font-size: 11px; color: var(--text-subtle);">Warehouse A, Cold Storage</div>
-                                    <div style="font-size: 11px; color: var(--warning); font-weight: 700; margin-top: 4px;">2% LEFT</div>
-                                </div>
-                                <button class="btn btn-sm btn-primary" style="font-size: 10px;">Request</button>
-                            </div>
+                            <p style="font-size:13px;color:var(--text-subtle);">Checking stock levels…</p>
                         </div>
                         <button type="button" class="btn btn-block" id="viewAlertsBtn" style="margin-top: 12px; font-size: 12px; border: 1px solid var(--border);">View All Alerts</button>
                     </div>
@@ -129,7 +114,16 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Unit</label>
-                                <input type="text" id="itemUnit" class="form-control" placeholder="sack, bottle, kit…" value="unit">
+                                <select id="itemUnit" class="form-control">
+                                    <option value="sack">sack</option>
+                                    <option value="bottle">bottle</option>
+                                    <option value="kit">kit</option>
+                                    <option value="box">box</option>
+                                    <option value="pack">pack</option>
+                                    <option value="piece">piece</option>
+                                    <option value="kg">kg</option>
+                                    <option value="liter">liter</option>
+                                </select>
                             </div>
                             <button type="submit" class="btn btn-primary btn-block">Add to Registry</button>
                         </form>
@@ -154,7 +148,18 @@
                 </select>
             </div>
             <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="editInvQty" class="form-control" min="0"></div>
-            <div class="form-group"><label class="form-label">Unit</label><input type="text" id="editInvUnit" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Unit</label>
+                <select id="editInvUnit" class="form-control">
+                    <option value="sack">sack</option>
+                    <option value="bottle">bottle</option>
+                    <option value="kit">kit</option>
+                    <option value="box">box</option>
+                    <option value="pack">pack</option>
+                    <option value="piece">piece</option>
+                    <option value="kg">kg</option>
+                    <option value="liter">liter</option>
+                </select>
+            </div>
             <div class="form-group"><label class="form-label">Cost / unit (optional)</label><input type="number" id="editInvCost" class="form-control" min="0" step="0.01"></div>
             <div class="form-group"><label class="form-label">Description</label><textarea id="editInvDesc" class="form-control" rows="2"></textarea></div>
             <div style="display:flex;gap:12px;">
@@ -275,7 +280,11 @@
                 if (data.success && data.inventory) {
                     lastInventoryRows = data.inventory;
                     filterInventoryTable();
-                    renderAlerts(lastInventoryRows.filter(item => stockStatus(item) !== 'Stable'));
+                    const lowItems = lastInventoryRows.filter(item => stockStatus(item) !== 'Stable');
+                    renderAlerts(lowItems);
+                    // Update low stock count card immediately after data is ready
+                    const lc = document.getElementById('lowStockCount');
+                    if (lc) lc.textContent = String(lowItems.length).padStart(2, '0');
                 }
             } catch (error) { console.error('Inventory error:', error); }
         }
@@ -365,7 +374,7 @@
                 await loadInventory();
                 loadSummary();
                 loadAlerts();
-            } else alert(j.message || 'Delete failed');
+            } else await ReliefUI.alert({ title: 'Cannot Delete Item', message: 'This item has active distribution history. Set quantity to 0 instead to archive.' });
         }
 
         document.getElementById('addItemForm').addEventListener('submit', async (e) => {
