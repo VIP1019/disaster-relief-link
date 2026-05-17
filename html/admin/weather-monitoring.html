@@ -64,9 +64,9 @@
             </div>
 
             <div class="main-grid animate-fade-in" style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px;">
-                <div class="card" style="padding: 0; overflow: hidden;">
-                    <div class="map-card-title">Barangay map (OpenStreetMap)</div>
-                    <div id="weatherMap" role="application" aria-label="Barangay weather map"></div>
+                <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div class="map-card-title">Barangay Weather Map (Satellite)</div>
+                    <div id="weatherMap" style="flex: 1; min-height: 400px;" role="application" aria-label="Barangay weather map"></div>
                 </div>
 
                 <div class="card">
@@ -121,9 +121,9 @@
             const center = [14.1128, 122.9559];
             if (!mapInstance) {
                 mapInstance = L.map('weatherMap', { scrollWheelZoom: true }).setView(center, 12);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
                 }).addTo(mapInstance);
                 markerLayer = L.layerGroup().addTo(mapInstance);
             }
@@ -141,7 +141,17 @@
                     (r.wind_speed != null ? esc(r.wind_speed) + ' m/s' : '') +
                     '<br>Flood index: ' + fs + ' (' + fl + ')' +
                     (r.surface_pressure_hpa != null ? '<br>Pressure: ' + esc(r.surface_pressure_hpa) + ' hPa' : '');
-                const m = L.marker([+lat, +lon]).bindPopup(html);
+                const riskLevel = r.flood_risk_level || 'LOW';
+                let mColor = '#36b37e'; 
+                if (riskLevel.toUpperCase() === 'EXTREME' || riskLevel.toUpperCase() === 'HIGH') mColor = '#ff5630';
+                else if (riskLevel.toUpperCase() === 'MODERATE') mColor = '#ffab00';
+                const weatherIcon = L.divIcon({
+                    className: 'weather-pin',
+                    html: '<div style="width: 16px; height: 16px; background: ' + mColor + '; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 8px ' + mColor + ';" class="pulse-hazard"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+                const m = L.marker([+lat, +lon], { icon: weatherIcon }).bindPopup(html);
                 m.addTo(markerLayer);
                 pts.push([+lat, +lon]);
             });

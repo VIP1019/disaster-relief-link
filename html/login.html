@@ -80,7 +80,7 @@
             e.preventDefault();
             const btn = e.target.querySelector('button');
             const originalText = btn.innerHTML;
-            btn.innerHTML = 'Authenticating...';
+            btn.classList.add('btn-loading');
             btn.disabled = true;
 
             const username = document.getElementById('username').value;
@@ -100,15 +100,16 @@
                     window.location.href = data.user_type === 'admin' ? 'admin/dashboard.html' : 'user/dashboard.html';
                 } else {
                     document.getElementById('loginError').textContent = data.message || 'Authentication failed';
-                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-loading');
                     btn.disabled = false;
                 }
             } catch (error) {
                 document.getElementById('loginError').textContent = 'System error. Please try again.';
-                btn.innerHTML = originalText;
+                btn.classList.remove('btn-loading');
                 btn.disabled = false;
             }
         });
     </script>
+    <script src="../js/validation.js"></script>
 </body>
 </html>

@@ -138,7 +138,7 @@
                 return;
             }
 
-            btn.innerHTML = 'Creating Account...';
+            btn.classList.add('btn-loading');
             btn.disabled = true;
 
             const formData = {
@@ -164,15 +164,16 @@
                     window.location.href = 'login.html';
                 } else {
                     document.getElementById('registerError').textContent = data.message || 'Registration failed';
-                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-loading');
                     btn.disabled = false;
                 }
             } catch (error) {
                 document.getElementById('registerError').textContent = 'System error occurred.';
-                btn.innerHTML = originalText;
+                btn.classList.remove('btn-loading');
                 btn.disabled = false;
             }
         });
     </script>
+    <script src="../js/validation.js"></script>
 </body>
 </html>

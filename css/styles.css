@@ -357,6 +357,56 @@ tr:hover td {
     animation: fadeIn 0.4s ease-out forwards;
 }
 
+/* Map Animations */
+@keyframes hazardPulse {
+    0% { transform: scale(0.9); transform-origin: center; opacity: 0.7; }
+    50% { transform: scale(1.15); transform-origin: center; opacity: 1; }
+    100% { transform: scale(0.9); transform-origin: center; opacity: 0.7; }
+}
+.pulse-hazard {
+    animation: hazardPulse 2s infinite ease-in-out;
+    transform-box: fill-box;
+}
+
+/* Button Loading Spinner */
+@keyframes btnSpin {
+    to { transform: rotate(360deg); }
+}
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    top: 50%;
+    left: 50%;
+    margin-top: -9px;
+    margin-left: -9px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: btnSpin 0.8s linear infinite;
+}
+
+/* Form Validation Shake */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+.shake-anim {
+    animation: shake 0.3s ease-in-out;
+}
+
+/* Zoom Earth Atmospheric Filter */
+.leaflet-tile-pane {
+    filter: brightness(0.65) contrast(1.2) saturate(1.1);
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
     .sidebar {

@@ -197,7 +197,7 @@
             if (!type) { alert('Please select a disaster type'); return; }
 
             const btn = e.target.querySelector('button[type="submit"]');
-            btn.innerHTML = 'Transmitting...';
+            btn.classList.add('btn-loading');
             btn.disabled = true;
 
             const formData = {
@@ -224,12 +224,12 @@
                     window.location.href = 'dashboard.html';
                 } else {
                     alert('Submission failed: ' + data.message);
-                    btn.innerHTML = 'Submit Incident Report →';
+                    btn.classList.remove('btn-loading');
                     btn.disabled = false;
                 }
             } catch (error) {
                 alert('System error occurred.');
-                btn.innerHTML = 'Submit Incident Report →';
+                btn.classList.remove('btn-loading');
                 btn.disabled = false;
             }
         });
@@ -249,8 +249,14 @@
         } catch (e) { console.warn(e); }
 
         sectorMap = L.map('sectorMap', { scrollWheelZoom: false }).setView([lat, lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(sectorMap);
-        sectorMarker = L.marker([lat, lng], { draggable: true }).addTo(sectorMap).bindPopup('Incident pin — drag to exact location<br><small>' + label + '</small>').openPopup();
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(sectorMap);
+        const submitIcon = L.divIcon({
+            className: 'submit-pin',
+            html: '<div style="width: 24px; height: 24px; background: #0052cc; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 12px #0052cc;" class="pulse-hazard"></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+        sectorMarker = L.marker([lat, lng], { draggable: true, icon: submitIcon }).addTo(sectorMap).bindPopup('Incident pin — drag to exact location<br><small>' + label + '</small>').openPopup();
         function syncHidden() {
             const p = sectorMarker.getLatLng();
             document.getElementById('incidentLat').value = p.lat.toFixed(6);
@@ -288,5 +294,6 @@
         }
     }
     </script>
+    <script src="../../js/validation.js"></script>
 </body>
 </html>

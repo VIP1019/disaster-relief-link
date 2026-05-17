@@ -209,7 +209,7 @@
             const center = [14.1128, 122.9559];
             if (!hazardMap) {
                 hazardMap = L.map('hazardMap', { scrollWheelZoom: false }).setView(center, 11);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(hazardMap);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' }).addTo(hazardMap);
                 hazardLayer = L.layerGroup().addTo(hazardMap);
             }
             hazardLayer.clearLayers();
@@ -221,7 +221,7 @@
                 if (isNaN(lat) || isNaN(lng)) return;
                 const rad = 6 + Math.min(18, Math.sqrt(parseInt(r.affected_families, 10) || 0));
                 const c = sevColor(r.severity_level);
-                const m = L.circleMarker([lat, lng], { radius: rad, color: c, fillColor: c, fillOpacity: 0.55, weight: 2 });
+                const m = L.circleMarker([lat, lng], { radius: rad, color: c, fillColor: c, fillOpacity: 0.55, weight: 2, className: 'pulse-hazard' });
                 m.bindPopup('<strong>' + String(r.barangay_name || '') + '</strong><br>' + String(r.disaster_type || '') + ' · ' + String(r.severity_level || '') + '<br><small>Status: ' + String(r.status || '') + '</small>');
                 m.addTo(hazardLayer);
                 pts.push([lat, lng]);

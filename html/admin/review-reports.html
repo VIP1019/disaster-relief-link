@@ -224,8 +224,14 @@
                     setTimeout(() => {
                         const el = document.getElementById('reportDetailMap');
                         detailMap = L.map(el).setView([+r.map_latitude, +r.map_longitude], 15);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(detailMap);
-                        L.marker([+r.map_latitude, +r.map_longitude]).addTo(detailMap).bindPopup('Report location').openPopup();
+                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(detailMap);
+                        const reportIcon = L.divIcon({
+                            className: 'report-pin',
+                            html: '<div style="width: 18px; height: 18px; background: #ff5630; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #ff5630;" class="pulse-hazard"></div>',
+                            iconSize: [18, 18],
+                            iconAnchor: [9, 9]
+                        });
+                        L.marker([+r.map_latitude, +r.map_longitude], { icon: reportIcon }).addTo(detailMap).bindPopup('Report location').openPopup();
                         detailMap.invalidateSize();
                     }, 100);
                 }

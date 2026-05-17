@@ -213,7 +213,7 @@
                     if (typeof L === 'undefined') return;
                     const center = [14.1128, 122.9559];
                     window.__distMap = L.map('distMap').setView(center, 11);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(window.__distMap);
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' }).addTo(window.__distMap);
                     const g = L.layerGroup().addTo(window.__distMap);
                     const pts = [];
                     rows.forEach(d => {
@@ -306,7 +306,7 @@
             e.preventDefault();
             const btn = e.target.querySelector('button');
             btn.disabled = true;
-            btn.innerHTML = 'Processing...';
+            btn.classList.add('btn-loading');
 
             const invId = parseInt(document.getElementById('distItem').value, 10);
             const qty = parseInt(document.getElementById('distQty').value, 10);
@@ -314,7 +314,7 @@
             if (qty > avail) {
                 await ReliefUI.alert({ title: 'Insufficient Stock', message: `Error: Only ${avail} units available in stock. Entered: ${qty}.` });
                 btn.disabled = false;
-                btn.innerHTML = 'Confirm Deployment';
+                btn.classList.remove('btn-loading');
                 return;
             }
 
@@ -335,21 +335,22 @@
                 if (data.success) {
                     await ReliefUI.alert({ title: 'Deployment confirmed', message: 'Distribution record created successfully.' });
                     btn.disabled = false;
-                    btn.innerHTML = 'Confirm Deployment';
+                    btn.classList.remove('btn-loading');
                     document.getElementById('distQty').value = '';
                     await loadDistributions();
                     await loadData();
                 } else {
                     await ReliefUI.alert({ title: 'Error', message: data.message || 'Could not record distribution.' });
                     btn.disabled = false;
-                    btn.innerHTML = 'Confirm Deployment';
+                    btn.classList.remove('btn-loading');
                 }
             } catch (error) {
                 await ReliefUI.alert({ title: 'Error', message: 'System error. Please try again.' });
                 btn.disabled = false;
-                btn.innerHTML = 'Confirm Deployment';
+                btn.classList.remove('btn-loading');
             }
         });
     </script>
+    <script src="../../js/validation.js"></script>
 </body>
 </html>

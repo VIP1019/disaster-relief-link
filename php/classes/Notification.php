@@ -149,7 +149,7 @@ class Notification {
      */
     public function notifyDistributionUpdate($barangay_id, $relief_items, $admin_id) {
         // Get all barangay officials from the affected barangay
-        $query = "SELECT id FROM users WHERE barangay_name = (SELECT name FROM barangays WHERE id = ?) AND user_type = 'barangay_official'";
+        $query = "SELECT id, full_name, email FROM users WHERE barangay_name = (SELECT name FROM barangays WHERE id = ?) AND user_type = 'barangay_official'";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param('i', $barangay_id);
@@ -160,6 +160,22 @@ class Notification {
 
         foreach ($officials as $official) {
             $this->createNotification($official['id'], 'relief_distribution', $message);
+            
+            // Mailtrap Email API Hook
+            if (!empty($official['email'])) {
+                require_once __DIR__ . '/Mailer.php';
+                $htmlBody = "<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                             <h2 style='color: #0747a6;'>ReliefLink Official Deployment</h2>
+                             <p>Dear <strong>{$official['full_name']}</strong>,</p>
+                             <p>Please be advised that relief items have been deployed to your barangay from the MDRRMO command center:</p>
+                             <div style='background: #f4f5f7; padding: 15px; border-radius: 4px; font-weight: bold;'>
+                             " . implode('<br>', $relief_items) . "
+                             </div>
+                             <p>Please prepare your local evacuation centers to receive the deployment.</p>
+                             <p style='color: #6b778c; font-size: 12px;'>This is an automated notification from ReliefLink Daet.</p>
+                             </div>";
+                Mailer::sendEmail($official['email'], $official['full_name'], "Relief Goods Deployed - ReliefLink", $htmlBody);
+            }
         }
 
         return ['success' => true, 'message' => 'Notifications sent to ' . count($officials) . ' barangay officials'];
@@ -177,7 +193,28 @@ class Notification {
 
         $message = $status_messages[$new_status] ?? 'Your report status has been updated.';
 
-        return $this->createNotification($user_id, 'report_status_change', $message, $report_id);
+        $res = $this->createNotification($user_id, 'report_status_change', $message, $report_id);
+        
+        // Mailtrap Email API Hook
+        $q = "SELECT full_name, email FROM users WHERE id = ?";
+        $st = $this->conn->prepare($q);
+        $st->bind_param('i', $user_id);
+        $st->execute();
+        $uData = $st->get_result()->fetch_assoc();
+        
+        if ($uData && !empty($uData['email'])) {
+            require_once __DIR__ . '/Mailer.php';
+            $htmlBody = "<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                         <h2 style='color: #ff8b00;'>Incident Status Update</h2>
+                         <p>Dear <strong>{$uData['full_name']}</strong>,</p>
+                         <p style='font-size: 16px;'><strong>$message</strong></p>
+                         <p>Log in to the ReliefLink dashboard to view details and coordinate further.</p>
+                         <p style='color: #6b778c; font-size: 12px;'>This is an automated notification from ReliefLink Daet.</p>
+                         </div>";
+            Mailer::sendEmail($uData['email'], $uData['full_name'], "Incident Report Status: " . strtoupper($new_status), $htmlBody);
+        }
+        
+        return $res;
     }
 
     /**
