@@ -64,14 +64,16 @@
             </div>
 
             <!-- Detail Modal -->
-            <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; overflow:auto; padding:24px;" onclick="if(event.target.id==='reportModal')closeReportModal()">
-                <div class="card" style="max-width: 720px; width: 100%; margin: 0; position:relative;">
-                    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
-                        <span>Report details</span>
-                        <button type="button" onclick="closeReportModal()" style="border:none; background:none; cursor:pointer; font-size:22px; line-height:1;">&times;</button>
+            <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:24px;" onclick="if(event.target.id==='reportModal')closeReportModal()">
+                <div class="card" style="max-width: 720px; width: 100%; max-height: calc(100vh - 48px); margin: 0; position:relative; display: flex; flex-direction: column; padding: 24px; box-sizing: border-box; overflow: hidden; background: #fff; border-radius: 12px;">
+                    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; margin-top: 0; margin-bottom: 16px; flex-shrink: 0; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                        <span style="font-weight: 700; font-size: 18px; color: var(--text-main);">Report details</span>
+                        <button type="button" onclick="closeReportModal()" style="border:none; background:none; cursor:pointer; font-size:24px; line-height:1; color: var(--text-subtle); padding: 0;">&times;</button>
                     </div>
-                    <div id="modalContent"></div>
-                    <div id="reportDetailMap" style="height:220px;border-radius:8px;margin-top:12px;border:1px solid var(--border);"></div>
+                    <div style="flex: 1; overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; min-height: 0;">
+                        <div id="modalContent"></div>
+                        <div id="reportDetailMap" style="height:220px;border-radius:8px;margin-top:12px;border:1px solid var(--border);margin-bottom:8px;flex-shrink: 0;"></div>
+                    </div>
                 </div>
             </div>
         </main>
