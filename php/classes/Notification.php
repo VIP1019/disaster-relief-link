@@ -186,7 +186,7 @@ class Notification {
      */
     public function notifyReportStatusChange($user_id, $report_id, $new_status) {
         $status_messages = [
-            'reviewed' => 'Your disaster report has been reviewed by administrators.',
+            'reviewed' => 'Your disaster report has been verified by administrators.',
             'prioritized' => 'Your barangay has been prioritized for relief distribution.',
             'relief_distributed' => 'Relief goods have been distributed to your barangay.'
         ];
@@ -211,7 +211,8 @@ class Notification {
                          <p>Log in to the ReliefLink dashboard to view details and coordinate further.</p>
                          <p style='color: #6b778c; font-size: 12px;'>This is an automated notification from ReliefLink Daet.</p>
                          </div>";
-            Mailer::sendEmail($uData['email'], $uData['full_name'], "Incident Report Status: " . strtoupper($new_status), $htmlBody);
+            $subject_status = ($new_status === 'reviewed') ? 'VERIFIED' : strtoupper($new_status);
+            Mailer::sendEmail($uData['email'], $uData['full_name'], "Incident Report Status: " . $subject_status, $htmlBody);
         }
         
         return $res;
