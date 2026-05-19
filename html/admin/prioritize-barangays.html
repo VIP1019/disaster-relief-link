@@ -117,7 +117,7 @@
                             </td>
                             <td><span class="badge badge-info">${r.weather_condition || '—'}</span></td>
                             <td><span class="badge badge-${(r.overall_severity || '').toLowerCase() === 'critical' ? 'danger' : 'success'}">${r.overall_severity}</span></td>
-                            <td><button class="btn btn-sm" style="border: 1px solid var(--border);" onclick="location.href='distribution.html'">Deploy Aid</button></td>
+                            <td><button class="btn btn-sm" style="border: 1px solid var(--border);" onclick="location.href='distribution.html?barangay=${encodeURIComponent(r.barangay_name)}&quantity=${r.affected_families_total || 0}'">Deploy Aid</button></td>
                         </tr>
                     `).join('');
                 }

@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/SmsService.php';
 
 class Notification {
     private $conn;
@@ -149,7 +150,7 @@ class Notification {
      */
     public function notifyDistributionUpdate($barangay_id, $relief_items, $admin_id) {
         // Get all barangay officials from the affected barangay
-        $query = "SELECT id, full_name, email FROM users WHERE barangay_name = (SELECT name FROM barangays WHERE id = ?) AND user_type = 'barangay_official'";
+        $query = "SELECT id, full_name, email, phone_number FROM users WHERE barangay_name = (SELECT name FROM barangays WHERE id = ?) AND user_type = 'barangay_official'";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param('i', $barangay_id);
@@ -160,6 +161,11 @@ class Notification {
 
         foreach ($officials as $official) {
             $this->createNotification($official['id'], 'relief_distribution', $message);
+            
+            // Semaphore SMS Hook
+            if (!empty($official['phone_number'])) {
+                SmsService::sendSms($official['phone_number'], $message);
+            }
             
             // Mailtrap Email API Hook
             if (!empty($official['email'])) {
@@ -196,23 +202,30 @@ class Notification {
         $res = $this->createNotification($user_id, 'report_status_change', $message, $report_id);
         
         // Mailtrap Email API Hook
-        $q = "SELECT full_name, email FROM users WHERE id = ?";
+        $q = "SELECT full_name, email, phone_number FROM users WHERE id = ?";
         $st = $this->conn->prepare($q);
         $st->bind_param('i', $user_id);
         $st->execute();
         $uData = $st->get_result()->fetch_assoc();
         
-        if ($uData && !empty($uData['email'])) {
-            require_once __DIR__ . '/Mailer.php';
-            $htmlBody = "<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
-                         <h2 style='color: #ff8b00;'>Incident Status Update</h2>
-                         <p>Dear <strong>{$uData['full_name']}</strong>,</p>
-                         <p style='font-size: 16px;'><strong>$message</strong></p>
-                         <p>Log in to the ReliefLink dashboard to view details and coordinate further.</p>
-                         <p style='color: #6b778c; font-size: 12px;'>This is an automated notification from ReliefLink Daet.</p>
-                         </div>";
-            $subject_status = ($new_status === 'reviewed') ? 'VERIFIED' : strtoupper($new_status);
-            Mailer::sendEmail($uData['email'], $uData['full_name'], "Incident Report Status: " . $subject_status, $htmlBody);
+        if ($uData) {
+            // Semaphore SMS Hook
+            if (!empty($uData['phone_number'])) {
+                SmsService::sendSms($uData['phone_number'], $message);
+            }
+            
+            if (!empty($uData['email'])) {
+                require_once __DIR__ . '/Mailer.php';
+                $htmlBody = "<div style='font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                             <h2 style='color: #ff8b00;'>Incident Status Update</h2>
+                             <p>Dear <strong>{$uData['full_name']}</strong>,</p>
+                             <p style='font-size: 16px;'><strong>$message</strong></p>
+                             <p>Log in to the ReliefLink dashboard to view details and coordinate further.</p>
+                             <p style='color: #6b778c; font-size: 12px;'>This is an automated notification from ReliefLink Daet.</p>
+                             </div>";
+                $subject_status = ($new_status === 'reviewed') ? 'VERIFIED' : strtoupper($new_status);
+                Mailer::sendEmail($uData['email'], $uData['full_name'], "Incident Report Status: " . $subject_status, $htmlBody);
+            }
         }
         
         return $res;
@@ -243,7 +256,7 @@ class Notification {
      * Admin: barangay officials for notification targeting.
      */
     public function getBarangayOfficialRecipients() {
-        $query = "SELECT id, full_name, username, barangay_name, email FROM users WHERE user_type = 'barangay_official' AND is_active = 1 ORDER BY barangay_name, full_name";
+        $query = "SELECT id, full_name, username, barangay_name, email, phone_number FROM users WHERE user_type = 'barangay_official' AND is_active = 1 ORDER BY barangay_name, full_name";
         $result = $this->conn->query($query);
         if (!$result) {
             return [];

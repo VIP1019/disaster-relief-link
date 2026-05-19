@@ -178,10 +178,6 @@ try {
                     $report_id = (int) ($relief->getLatestActiveReportIdForBarangay($barangay_id) ?: 0);
                 }
 
-                $inventory_id = (int) ($data['inventory_id'] ?? 0);
-                $qty = (int) ($data['quantity_distributed'] ?? $data['quantity'] ?? 0);
-                $notes = (string) ($data['notes'] ?? '');
-
                 if ($report_id > 0) {
                     $from_report = $relief->getBarangayIdForReport($report_id);
                     if ($from_report !== null && $from_report > 0) {
@@ -189,26 +185,89 @@ try {
                     }
                 }
 
-                if ($report_id <= 0 || $barangay_id <= 0 || $inventory_id <= 0 || $qty <= 0) {
+                $notes = (string) ($data['notes'] ?? '');
+
+                if ($report_id <= 0 || $barangay_id <= 0) {
                     http_response_code(400);
                     echo json_encode([
                         'success' => false,
-                        'message' => 'Could not record distribution. Ensure the barangay has an active disaster report (submitted/reviewed/prioritized), and send inventory_id plus quantity (or quantity_distributed).',
+                        'message' => 'Could not record distribution. Ensure the barangay has an active disaster report (submitted/reviewed/prioritized).'
                     ]);
                     break;
                 }
 
-                $result = $relief->recordDistribution(
-                    $report_id,
-                    $barangay_id,
-                    $inventory_id,
-                    $qty,
-                    (int) $current_user['id'],
-                    $notes
-                );
+                // If items array is provided, process multiple items atomically
+                if (isset($data['items']) && is_array($data['items']) && count($data['items']) > 0) {
+                    $relief->beginTransaction();
+                    $success_count = 0;
+                    $errors = [];
 
-                http_response_code($result['success'] ? 201 : 400);
-                echo json_encode($result);
+                    foreach ($data['items'] as $item) {
+                        $inventory_id = (int) ($item['inventory_id'] ?? 0);
+                        $qty = (int) ($item['quantity'] ?? $item['quantity_distributed'] ?? 0);
+
+                        if ($inventory_id <= 0 || $qty <= 0) {
+                            $errors[] = "Invalid item ID or quantity in batch request.";
+                            continue;
+                        }
+
+                        $result = $relief->recordDistribution(
+                            $report_id,
+                            $barangay_id,
+                            $inventory_id,
+                            $qty,
+                            (int) $current_user['id'],
+                            $notes ?: 'Relief distribution shipment deployment'
+                        );
+
+                        if (!$result['success']) {
+                            $errors[] = $result['message'] ?? "Stock deduction failed for item ID {$inventory_id}.";
+                        } else {
+                            $success_count++;
+                        }
+                    }
+
+                    if (count($errors) > 0) {
+                        $relief->rollback();
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Shipment aborted. Errors: ' . implode(' | ', $errors)
+                        ]);
+                    } else {
+                        $relief->commit();
+                        http_response_code(201);
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Shipment of {$success_count} item(s) completed successfully."
+                        ]);
+                    }
+                } else {
+                    // Backward compatibility single-item mode
+                    $inventory_id = (int) ($data['inventory_id'] ?? 0);
+                    $qty = (int) ($data['quantity_distributed'] ?? $data['quantity'] ?? 0);
+
+                    if ($inventory_id <= 0 || $qty <= 0) {
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Please select an item and a valid quantity.'
+                        ]);
+                        break;
+                    }
+
+                    $result = $relief->recordDistribution(
+                        $report_id,
+                        $barangay_id,
+                        $inventory_id,
+                        $qty,
+                        (int) $current_user['id'],
+                        $notes
+                    );
+
+                    http_response_code($result['success'] ? 201 : 400);
+                    echo json_encode($result);
+                }
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

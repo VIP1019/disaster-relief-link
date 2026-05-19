@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="ReliefLink is the official disaster relief coordination and public transparency portal for the Municipality of Daet. Monitor relief progress, view verification photos, and support our community.">
+    <title>ReliefLink Daet | Official Disaster Relief & Transparency Portal</title>
+
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <style>
+        /* ===== RELIEFLINK CIVIC DESIGN SYSTEM (OFFICIAL PROJECT COLOR PALETTE) ===== */
+        :root {
+            --font-primary: 'Plus Jakarta Sans', sans-serif;
+            --font-display: 'Outfit', sans-serif;
+
+            /* Official ReliefLink Branding Colors (from css/styles.css) */
+            --bg-base: #f4f5f7;
+            /* Soft grey base */
+            --bg-card: #ffffff;
+            /* Pure white */
+
+            --primary: #0052cc;
+            /* Trustworthy Brand Blue */
+            --primary-hover: #0747a6;
+            /* Darker Blue */
+            --primary-light: #deebff;
+            /* Soft Light Blue highlights */
+
+            --success: #36b37e;
+            /* Accent Green for successful deliveries */
+            --success-light: #e3fcef;
+            /* Light Green background stamp */
+            --success-text: #006644;
+            /* Dark Green text for legibility */
+
+            --warning: #ffab00;
+            /* Alert Amber for ongoing activities */
+            --warning-light: #fffae6;
+            /* Light Amber background */
+            --warning-text: #825c00;
+            /* Dark Amber text */
+
+            --text-main: #172b4d;
+            /* High-contrast Slate Dark for headings */
+            --text-subtle: #5e6c84;
+            /* Muted body text */
+            --text-muted: #8993a4;
+            /* Captions, dates, and placeholders */
+
+            --border: #dfe1e6;
+            /* Official borders */
+            --border-hover: #c1c7d0;
+
+            --radius-card: 16px;
+            --radius-btn: 8px;
+
+            --transition-smooth: all 0.25s cubic-bezier(0.15, 0, 0.5, 1);
+            --shadow-subtle: 0 1px 2px rgba(9, 30, 66, 0.08);
+            --shadow-elevated: 0 12px 24px -6px rgba(9, 30, 66, 0.15), 0 0 1px rgba(9, 30, 66, 0.2);
+        }
+
+        /* ===== GENERAL STYLING & CUSTOM SCROLLBAR ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-base);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c7d0;
+            border-radius: 99px;
+            border: 2px solid var(--bg-base);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #97a0af;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background-color: var(--bg-base);
+            color: var(--text-subtle);
+            overflow-x: hidden;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== BACKGROUND GRADIENTS & SHAPES ===== */
+        .page-bg-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 700px;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+            background: linear-gradient(135deg, #ebecf0 0%, #deebff 50%, var(--bg-base) 100%);
+        }
+
+        .ambient-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+        }
+
+        .glow-blue {
+            width: 450px;
+            height: 450px;
+            background: #deebff;
+            top: -150px;
+            right: 5%;
+        }
+
+        .glow-slate {
+            width: 350px;
+            height: 350px;
+            background: #ebecf0;
+            top: 250px;
+            left: -50px;
+        }
+
+        /* ===== HEADER & NAVIGATION ===== */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition-smooth);
+        }
+
+        header.scrolled {
+            background: #ffffff;
+            box-shadow: var(--shadow-subtle);
+            border-bottom-color: transparent;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.9rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 1.15rem;
+            box-shadow: 0 2px 6px rgba(0, 82, 204, 0.15);
+            font-family: var(--font-display);
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.35rem;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        .logo-text span {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: block;
+            margin-top: -3px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-subtle);
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+        }
+
+        .btn-launch {
+            background: var(--primary);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.6rem 1.15rem;
+            border-radius: var(--radius-btn);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 82, 204, 0.15);
+            transition: var(--transition-smooth);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-launch:hover {
+            background: var(--primary-hover);
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            position: relative;
+            padding: 5rem 1.5rem 3.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tagline-badge {
+            background: rgba(0, 82, 204, 0.06);
+            border: 1px solid rgba(0, 82, 204, 0.15);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 0.4rem 1rem;
+            border-radius: 99px;
+            margin-bottom: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tagline-badge span {
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: clamp(2.1rem, 4.5vw, 3.4rem);
+            line-height: 1.2;
+            letter-spacing: -0.75px;
+            color: var(--text-main);
+            max-width: 800px;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-title span {
+            color: var(--primary);
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero-title span::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 82, 204, 0.1);
+            z-index: -1;
+            border-radius: 2px;
+        }
+
+        .hero-description {
+            font-size: clamp(1rem, 2vw, 1.1rem);
+            color: var(--text-subtle);
+            max-width: 650px;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-primary-project {
+            background: var(--primary);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 0.85rem 1.85rem;
+            border-radius: var(--radius-btn);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 82, 204, 0.2);
+            transition: var(--transition-smooth);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary-project:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .btn-secondary-project {
+            background: #ffffff;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 0.85rem 1.85rem;
+            border-radius: var(--radius-btn);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .btn-secondary-project:hover {
+            background: var(--bg-base);
+            border-color: var(--border-hover);
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+
+        /* ===== PUBLIC PROGRESS DASHBOARD ===== */
+        .progress-section {
+            padding: 3.5rem 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-tag {
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.75rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .stat-icon.served {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .stat-icon.shipments {
+            background: #e3fcef;
+            color: #006644;
+        }
+
+        .stat-icon.cargo {
+            background: #fffae6;
+            color: #825c00;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 2.85rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-label {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-desc {
+            font-size: 0.85rem;
+            color: var(--text-subtle);
+            line-height: 1.5;
+        }
+
+        /* ===== DELIVERY RECEIPTS GALLERY ===== */
+        .gallery-section {
+            padding: 3.5rem 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.75rem;
+            margin-top: 2rem;
+        }
+
+        .gallery-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 360px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .gallery-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .card-image-wrap {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            background: #ebecf0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition-smooth);
+        }
+
+        .gallery-card:hover .card-image {
+            transform: scale(1.02);
+        }
+
+        .card-image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-subtle);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            background: linear-gradient(135deg, var(--primary-light) 0%, #deebff 100%);
+            position: relative;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .card-image-placeholder svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--primary);
+            stroke-width: 1.5;
+            margin-bottom: 0.25rem;
+        }
+
+        .verified-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: var(--success);
+            color: #ffffff;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.3rem 0.7rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(54, 179, 126, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            z-index: 5;
+        }
+
+        .verified-badge svg {
+            width: 10px;
+            height: 10px;
+            stroke: #ffffff;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .card-meta-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .card-brgy {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .card-disaster {
+            font-size: 0.75rem;
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-meta-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #ebecf0;
+            padding-top: 0.85rem;
+            margin-top: auto;
+        }
+
+        .card-families {
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+        }
+
+        .card-families strong {
+            color: var(--text-main);
+        }
+
+        .card-date {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .empty-gallery-state {
+            grid-column: 1 / -1;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-subtle);
+            box-shadow: var(--shadow-subtle);
+        }
+
+        /* ===== OFFICIAL PORTALS SECTION ===== */
+        .portals-section {
+            padding: 3.5rem 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            border-top: 1px solid var(--border);
+        }
+
+        .portals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.75rem;
+            margin-top: 2rem;
+        }
+
+        .portal-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 2.25rem;
+            transition: var(--transition-smooth);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .portal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px 0 0 4px;
+            transition: var(--transition-smooth);
+        }
+
+        .portal-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .portal-title {
+            font-family: var(--font-display);
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .portal-desc {
+            font-size: 0.9rem;
+            color: var(--text-subtle);
+            line-height: 1.5;
+            min-height: 70px;
+        }
+
+        .portal-btn {
+            background: var(--primary-light);
+            border: 1px solid rgba(0, 82, 204, 0.1);
+            color: var(--primary);
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-btn);
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-align: center;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .portal-card:hover .portal-btn {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: transparent;
+        }
+
+        /* ===== LOGISTICS RECEIPTS LIGHTBOX ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(9, 30, 66, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition-smooth);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-container {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            width: 100%;
+            max-width: 760px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.97) translateY(10px);
+            transition: var(--transition-smooth);
+            box-shadow: var(--shadow-elevated);
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-base);
+            border: none;
+            color: var(--text-subtle);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+            z-index: 10;
+        }
+
+        .modal-close-btn:hover {
+            background: var(--border);
+            color: var(--text-main);
+            transform: rotate(90deg);
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        @media (max-width: 768px) {
+            .modal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .modal-photo-pane {
+            background: var(--bg-base);
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .modal-photo-pane {
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+            }
+        }
+
+        .modal-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .modal-details-pane {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .modal-brgy-title {
+            font-family: var(--font-display);
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        .modal-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: var(--success-light);
+            color: var(--success-text);
+            padding: 0.25rem 0.65rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .modal-status-pill svg {
+            width: 10px;
+            height: 10px;
+            stroke: currentColor;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        .meta-log-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .meta-log-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #ebecf0;
+            padding-bottom: 0.35rem;
+        }
+
+        .meta-log-label {
+            color: var(--text-subtle);
+        }
+
+        .meta-log-val {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .signature-showcase {
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .signature-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-subtle);
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        .signature-img {
+            max-height: 60px;
+            object-fit: contain;
+            opacity: 0.85;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background: #091e42;
+            padding: 3.5rem 1.5rem 2rem;
+            color: #97a0af;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        .footer-top {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-width: 320px;
+        }
+
+        .footer-brand .logo-text {
+            color: #ffffff;
+        }
+
+        .footer-brand .logo-text span {
+            color: #4c9aff;
+        }
+
+        .footer-desc {
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .footer-links-group {
+            display: flex;
+            gap: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-column {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .footer-title {
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.35rem;
+        }
+
+        .footer-link {
+            color: #97a0af;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: var(--transition-smooth);
+        }
+
+        .footer-link:hover {
+            color: #ffffff;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* ===== CIVIC TRANSITION ANIMATIONS ===== */
+        .slide-up {
+            opacity: 0;
+            transform: translateY(15px);
+            animation: slideUp 0.5s cubic-bezier(0.15, 0, 0.5, 1) forwards;
+        }
+
+        .delay-1 {
+            animation-delay: 0.08s;
+        }
+
+        .delay-2 {
+            animation-delay: 0.16s;
+        }
+
+        .delay-3 {
+            animation-delay: 0.24s;
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Civic Sky & Slate Backing Shapes -->
+    <div class="page-bg-shapes">
+        <div class="ambient-glow glow-blue"></div>
+        <div class="ambient-glow glow-slate"></div>
+    </div>
+
+    <!-- ===== NAVIGATION HEADER ===== -->
+    <header id="mainHeader">
+        <div class="nav-container">
+            <div class="logo-wrap" onclick="window.scrollTo(0,0)">
+                <div class="logo-icon">RL</div>
+                <div class="logo-text">
+                    ReliefLink
+                    <span>Municipality of Daet</span>
+                </div>
+            </div>
+
+            <nav class="nav-links">
+                <a href="#progress" class="nav-link">Relief Progress</a>
+                <a href="#gallery" class="nav-link">Delivery Photos</a>
+                <a href="#portals" class="nav-link">Official Logins</a>
+                <a href="html/login.html" class="btn-launch">
+                    Portal Sign In
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== CIVIC HERO SECTION ===== -->
+    <section class="hero">
+        <div class="tagline-badge slide-up">
+            <span></span>
+            Official Disaster Relief Information
+        </div>
+        <h1 class="hero-title slide-up delay-1">
+            Coordinating Aid. Supporting Families.<br><span>Restoring Daet.</span>
+        </h1>
+        <p class="hero-description slide-up delay-2">
+            Welcome to the official, public disaster relief transparency portal for the <strong>Municipality of Daet,
+                Camarines Norte</strong>
+        <div class="hero-ctas slide-up delay-3">
+            <a href="#progress" class="btn-primary-project">
+                View Distribution Progress
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <polyline points="19 12 12 19 5 12"></polyline>
+                </svg>
+            </a>
+            <a href="html/login.html" class="btn-secondary-project">
+                Official Portal Login
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- ===== CIVIC PROGRESS STATISTICS ===== -->
+    <section class="progress-section" id="progress">
+        <div class="section-header">
+            <span class="section-tag">Transparency Overview</span>
+            <h2 class="section-title">Relief Operation Progress</h2>
+        </div>
+
+        <div class="stats-grid">
+            <!-- Stat 1: Served Barangays -->
+            <div class="stat-card">
+                <div class="stat-icon served">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-value" id="valBarangays">0</div>
+                <div class="stat-label">Barangays Reached</div>
+                <div class="stat-desc">Distinct barangays in Daet that have received verified emergency relief items.
+                </div>
+            </div>
+
+            <!-- Stat 2: Total Shipments -->
+            <div class="stat-card">
+                <div class="stat-icon shipments">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                </div>
+                <div class="stat-value" id="valShipments">0</div>
+                <div class="stat-label">Completed Deliveries</div>
+                <div class="stat-desc">Total individual supply operations dispatched and completed successfully.</div>
+            </div>
+
+            <!-- Stat 3: Cargo Units -->
+            <div class="stat-card">
+                <div class="stat-icon cargo">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                        <polygon points="12 22.08 12 12 3 6.92 3 17 12 22.08"></polygon>
+                        <polygon points="12 22.08 21 17 21 6.92 12 12 12 22.08"></polygon>
+                        <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12"></polygon>
+                    </svg>
+                </div>
+                <div class="stat-value" id="valUnits">0</div>
+                <div class="stat-label">Relief Items Distributed</div>
+                <div class="stat-desc">Total count of food packages, water cases, and hygiene kits handed out.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== DYNAMIC RELIEF PHOTOS FEED ===== -->
+    <section class="gallery-section" id="gallery">
+        <div class="section-header">
+            <span class="section-tag">Public Transparency</span>
+            <h2 class="section-title">Delivery Photos & Receipts</h2>
+        </div>
+
+        <div class="gallery-grid" id="galleryContainer">
+            <!-- Populated asynchronously via Javascript fetch -->
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-subtle);">
+                Connecting to municipal database logs...
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CIVIC OFFICIAL ACCESS PATHS ===== -->
+    <section class="portals-section" id="portals">
+        <div class="section-header">
+            <span class="section-tag">Official Command Portals</span>
+            <h2 class="section-title">Log in to Coordinate</h2>
+        </div>
+
+        <div class="portals-grid">
+            <!-- Barangay Card -->
+            <div class="portal-card">
+                <div class="portal-title">For Barangay Officials</div>
+                <p class="portal-desc">Log in to report local hazard levels, request essential supplies for affected
+                    families, view transit status, and confirm delivery arrivals with signature receipts.</p>
+                <a href="html/login.html" class="portal-btn">
+                    Barangay Portal Login
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Admin Card -->
+            <div class="portal-card">
+                <div class="portal-title">For Municipal Admins</div>
+                <p class="portal-desc">Log in to coordinate resources from the warehouse, review priority needs of
+                    different barangays, manage shipments, and dispatch SMS update alerts.</p>
+                <a href="html/login.html" class="portal-btn">
+                    Admin Portal Login
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== COMPREHENSIVE LIGHTBOX MODAL OVERLAY ===== -->
+    <div class="modal-overlay" id="transparencyModal">
+        <div class="modal-container">
+            <button class="modal-close-btn" id="modalClose" aria-label="Close details">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="modal-grid">
+                <div class="modal-photo-pane" id="modalPhotoPane">
+                    <!-- Photo injected here -->
+                </div>
+                <div class="modal-details-pane">
+                    <div class="modal-status-pill">
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Delivery Confirmed
+                    </div>
+                    <h3 class="modal-brgy-title" id="modalBrgy">Barangay Name</h3>
+
+                    <ul class="meta-log-list">
+                        <li class="meta-log-item">
+                            <span class="meta-log-label">Barangay</span>
+                            <span class="meta-log-val" id="modalMetaBrgy">Barangay</span>
+                        </li>
+                        <li class="meta-log-item">
+                            <span class="meta-log-label">Disaster Hazard</span>
+                            <span class="meta-log-val" id="modalMetaDisaster"
+                                style="color: var(--primary);">Typhoon</span>
+                        </li>
+                        <li class="meta-log-item">
+                            <span class="meta-log-label">Affected Families</span>
+                            <span class="meta-log-val" id="modalMetaFamilies">0 families</span>
+                        </li>
+                        <li class="meta-log-item">
+                            <span class="meta-log-label">Report Logged</span>
+                            <span class="meta-log-val" id="modalMetaLogged">Date</span>
+                        </li>
+                        <li class="meta-log-item">
+                            <span class="meta-log-label">Arrival Completed</span>
+                            <span class="meta-log-val" id="modalMetaConfirmed"
+                                style="color: var(--success-text);">Date</span>
+                        </li>
+                    </ul>
+
+                    <div class="signature-showcase" id="modalSigBlock">
+                        <span class="signature-title">Official Receipt Signature</span>
+                        <img src="" class="signature-img" id="modalSigImg" alt="Signature receipt">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MUNICIPAL FOOTER ===== -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <div class="logo-wrap">
+                        <div class="logo-icon">RL</div>
+                        <div class="logo-text" style="color:#ffffff;">
+                            ReliefLink
+                            <span style="color:#4c9aff;">Municipality of Daet</span>
+                        </div>
+                    </div>
+                    <p class="footer-desc">
+                        ReliefLink helps the local government of Daet coordinate and distribute emergency aid quickly,
+                        transparently, and safely.
+                    </p>
+                </div>
+
+                <div class="footer-links-group">
+                    <div class="footer-column">
+                        <span class="footer-title">Official Logins</span>
+                        <a href="html/login.html" class="footer-link">Portal Login</a>
+                        <a href="html/register.html" class="footer-link">Register New Account</a>
+                    </div>
+                    <div class="footer-column">
+                        <span class="footer-title">Support Resources</span>
+                        <a href="#" class="footer-link">Municipal Website</a>
+                        <a href="#" class="footer-link">Emergency Support Hotlines</a>
+                        <a href="#" class="footer-link">Privacy Safeguards</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <span>&copy; 2026 Municipality of Daet. Public Transparency & Disaster Support Ledger.</span>
+                <span style="color: #64748b; font-size: 0.8rem;">RELIEFLINK v4.6.2</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===== DATA PROGRESS SCRIPTS ===== -->
+    <script>
+        // Shrink header background opacity on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('mainHeader');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Numeric counter count-up animator
+        function animateCounter(elementId, targetValue) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            let current = 0;
+            const duration = 900; // ms
+            const stepTime = Math.max(Math.floor(duration / Math.max(targetValue, 1)), 15);
+            const increment = Math.ceil(targetValue / (duration / stepTime));
+
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= targetValue) {
+                    clearInterval(timer);
+                    element.textContent = Number(targetValue).toLocaleString();
+                } else {
+                    element.textContent = Number(current).toLocaleString();
+                }
+            }, stepTime);
+        }
+
+        // Load Statistics
+        async function loadStats() {
+            try {
+                const res = await fetch('php/api/public.php?action=public_stats');
+                const data = await res.json();
+                if (data.success && data.stats) {
+                    animateCounter('valBarangays', data.stats.barangays_served || 0);
+                    animateCounter('valShipments', data.stats.total_distributions || 0);
+                    animateCounter('valUnits', data.stats.total_units_distributed || 0);
+                } else {
+                    console.error('Telemetry progress fetch error');
+                }
+            } catch (err) {
+                console.error('Failed to sync statistics:', err);
+            }
+        }
+
+        // Keep local cache for click lightbox detail references
+        let galleryCache = [];
+
+        // Build elegant friendly default SVG image when photo isn't uploaded
+        function getFriendlyPlaceholder(brgy, hazard) {
+            return `
+                <div class="card-image-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    <span style="font-weight:700; font-family:var(--font-display); color:var(--primary); font-size: 0.95rem; margin-top: 0.25rem;">Delivery Receipt Logged</span>
+                    <span style="font-size:0.75rem; color:var(--text-subtle);">${brgy} • Verified Relief</span>
+                </div>
+            `;
+        }
+
+        // Format dates cleanly
+        function formatUserFriendlyDate(sqlDate) {
+            if (!sqlDate) return 'Signed in transit';
+            try {
+                const d = new Date(sqlDate.replace(' ', 'T'));
+                return d.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return sqlDate;
+            }
+        }
+
+        // Fetch Live Gallery
+        async function loadGallery() {
+            const container = document.getElementById('galleryContainer');
+            if (!container) return;
+
+            try {
+                const res = await fetch('php/api/public.php?action=public_gallery');
+                const data = await res.json();
+
+                if (data.success && data.gallery) {
+                    galleryCache = data.gallery;
+                    container.innerHTML = '';
+
+                    if (galleryCache.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-gallery-state">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:1rem; opacity:0.8;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <h3 style="color:var(--text-main); font-weight:700; margin-bottom: 0.25rem;">No Delivery Photos Available</h3>
+                                <p style="font-size:0.85rem; color:var(--text-subtle);">Relief verification items and confirmation signatures will show up dynamically as active shipments reach their destinations.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    galleryCache.forEach((item, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'gallery-card slide-up';
+                        card.style.animationDelay = `${index * 0.05}s`;
+                        card.onclick = () => openLightbox(index);
+
+                        let photoBlock = '';
+                        if (item.proof_photo) {
+                            const src = item.proof_photo.startsWith('data:') ? item.proof_photo : `data:image/jpeg;base64,${item.proof_photo}`;
+                            photoBlock = `<img src="${src}" class="card-image" alt="Proof photo for Barangay ${item.barangay_name}">`;
+                        } else {
+                            photoBlock = getFriendlyPlaceholder(item.barangay_name, item.disaster_type);
+                        }
+
+                        card.innerHTML = `
+                            <div class="card-image-wrap">
+                                <div class="verified-badge">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Delivered
+                                </div>
+                                ${photoBlock}
+                            </div>
+                            <div class="card-body">
+                                <div class="card-meta-top">
+                                    <span class="card-disaster">${item.disaster_type}</span>
+                                    <span class="card-brgy">${item.barangay_name}</span>
+                                </div>
+                                <div class="card-meta-bottom">
+                                    <span class="card-families">Affected: <strong>${item.affected_families.toLocaleString()}</strong></span>
+                                    <span class="card-date">${formatUserFriendlyDate(item.delivery_confirmed_at).split(',')[0]}</span>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    console.error('Failed to parse dynamic verification feed');
+                    showGalleryError();
+                }
+            } catch (err) {
+                console.error('Error syncing delivery photos feed:', err);
+                showGalleryError();
+            }
+        }
+
+        function showGalleryError() {
+            const container = document.getElementById('galleryContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-gallery-state" style="background:#ffffff; border-color:#ff5630;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ff5630" stroke-width="1.5" style="margin-bottom:1rem;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <h3 style="color:#ff5630; font-weight:700; margin-bottom: 0.25rem;">System Connection Issue</h3>
+                        <p style="font-size:0.85rem; color:var(--text-subtle);">Could not connect to the municipal tracking server. Please check your connection and reload the page.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Transparency Lightbox Overlays
+        const modal = document.getElementById('transparencyModal');
+        const modalClose = document.getElementById('modalClose');
+
+        function openLightbox(index) {
+            const item = galleryCache[index];
+            if (!item) return;
+
+            document.getElementById('modalBrgy').textContent = `Barangay ${item.barangay_name}`;
+            document.getElementById('modalMetaBrgy').textContent = item.barangay_name;
+            document.getElementById('modalMetaDisaster').textContent = item.disaster_type;
+            document.getElementById('modalMetaFamilies').textContent = `${Number(item.affected_families).toLocaleString()} families`;
+            document.getElementById('modalMetaLogged').textContent = formatUserFriendlyDate(item.submitted_at);
+            document.getElementById('modalMetaConfirmed').textContent = formatUserFriendlyDate(item.delivery_confirmed_at);
+
+            // Injected Confirmation Image
+            const pane = document.getElementById('modalPhotoPane');
+            pane.innerHTML = '';
+            if (item.proof_photo) {
+                const src = item.proof_photo.startsWith('data:') ? item.proof_photo : `data:image/jpeg;base64,${item.proof_photo}`;
+                pane.innerHTML = `<img src="${src}" class="modal-photo" alt="Delivery photo in Barangay ${item.barangay_name}">`;
+            } else {
+                pane.innerHTML = getFriendlyPlaceholder(item.barangay_name, item.disaster_type);
+            }
+
+            // Injected Masked / Censored Signature (Option C)
+            const sigBlock = document.getElementById('modalSigBlock');
+            if (item.signature_data) {
+                const src = item.signature_data.startsWith('data:') ? item.signature_data : `data:image/png;base64,${item.signature_data}`;
+                sigBlock.innerHTML = `
+                    <div style="font-size: 11px; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                        <span>Receiver's Signature (Censored):</span>
+                    </div>
+                    <div style="position: relative; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; height: 75px; overflow: hidden;">
+                        <!-- Blurred signature image -->
+                        <img src="${src}" style="max-width: 100%; height: 60px; object-fit: contain; filter: blur(6px); opacity: 0.3;" />
+                        
+                        <!-- Overlay privacy banner -->
+                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(240, 240, 240, 0.45); gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--text-subtle);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #657786;">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <span>Signature Masked for Privacy</span>
+                        </div>
+                    </div>
+                `;
+                sigBlock.style.display = 'block';
+            } else {
+                sigBlock.style.display = 'none';
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // lock background scroll while active
+        }
+
+        function closeLightbox() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        modalClose.addEventListener('click', closeLightbox);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeLightbox();
+            }
+        });
+
+        // Initialize Routine
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadGallery();
+        });
+    </script>
+</body>
+
+</html>

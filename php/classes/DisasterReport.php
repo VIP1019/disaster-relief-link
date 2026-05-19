@@ -572,6 +572,8 @@ class DisasterReport {
         $check->bind_param('ii', $rid, $uid);
         $check->execute();
         $row = $check->get_result()->fetch_assoc();
+        $check->close();
+
         if (!$row) {
             return ['success' => false, 'message' => 'Report not found'];
         }
@@ -598,8 +600,10 @@ class DisasterReport {
         $stmt = $this->conn->prepare($q);
         $stmt->bind_param('ssii', $photo, $sig, $rid, $uid);
         if ($stmt->execute()) {
+            $stmt->close();
             return ['success' => true, 'message' => 'Proof of delivery recorded. Status: RELIEF RECEIVED.'];
         }
+        $stmt->close();
         return ['success' => false, 'message' => 'Could not save proof of delivery'];
     }
 }

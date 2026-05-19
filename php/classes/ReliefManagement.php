@@ -16,6 +16,25 @@ class ReliefManagement {
         $this->conn = $db->getConnection();
     }
 
+    // ==================== TRANSACTION MANAGEMENT ====================
+    public function beginTransaction() {
+        if ($this->conn) {
+            $this->conn->begin_transaction();
+        }
+    }
+
+    public function commit() {
+        if ($this->conn) {
+            $this->conn->commit();
+        }
+    }
+
+    public function rollback() {
+        if ($this->conn) {
+            $this->conn->rollback();
+        }
+    }
+
     // ==================== INVENTORY MANAGEMENT ====================
 
     private function normalizeCategory($category) {

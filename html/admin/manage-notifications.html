@@ -68,6 +68,48 @@
                         <button type="button" class="btn btn-primary btn-block" id="saveBroadcastBtn">Save broadcast</button>
                     </div>
 
+                    <!-- Semaphore SMS Configuration Card -->
+                    <div class="card" style="margin-bottom: 16px; border-left: 4px solid var(--info);">
+                        <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                            <svg class="icon" style="color: var(--info); width: 20px; height: 20px;"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+                            <span>Semaphore SMS Settings</span>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-subtle); margin-bottom: 12px;">
+                            Deliver critical alerts directly to barangay officials' mobile phones via Semaphore SMS API.
+                        </p>
+                        
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 16px; cursor: pointer; font-weight: 600;">
+                            <input type="checkbox" id="smsEnabled"> Enable SMS Channel
+                        </label>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Semaphore API Key</label>
+                            <input type="password" id="smsApiKey" class="form-control" placeholder="Enter API Key">
+                            <span style="font-size: 10px; color: var(--text-subtle);">Keep secure. Key starts with 3d81...</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Sender Name</label>
+                            <input type="text" id="smsSenderName" class="form-control" placeholder="SEMAPHORE" value="SEMAPHORE">
+                            <span style="font-size: 10px; color: var(--text-subtle);">Must match your approved Semaphore sender name.</span>
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary btn-block" id="saveSmsBtn" style="background-color: var(--info); margin-bottom: 16px;">
+                            Save SMS Configuration
+                        </button>
+                        
+                        <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-subtle); display: block; margin-bottom: 8px;">Test SMS Channel</span>
+                            <div class="form-group">
+                                <input type="text" id="testSmsNumber" class="form-control" placeholder="Mobile Number (e.g., 09171234567)" style="margin-bottom: 8px;">
+                                <input type="text" id="testSmsMessage" class="form-control" placeholder="Test Message" value="ReliefLink Test SMS. System operational!" style="margin-bottom: 8px;">
+                                <button type="button" class="btn btn-block" id="sendTestSmsBtn" style="border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main);">
+                                    Send Test Message
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-title">Broadcast Categories</div>
                         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -145,7 +187,93 @@
             document.getElementById('confirmSendBtn').addEventListener('click', sendNotification);
             document.getElementById('saveBroadcastBtn').addEventListener('click', saveBroadcast);
             loadBroadcast();
+            
+            // SMS Setting Event Listeners
+            document.getElementById('saveSmsBtn').addEventListener('click', saveSmsSettings);
+            document.getElementById('sendTestSmsBtn').addEventListener('click', sendTestSms);
+            loadSmsSettings();
         });
+
+        async function loadSmsSettings() {
+            try {
+                const res = await fetch(api + '/notifications.php?action=get_sms_settings', { credentials: 'include' });
+                const j = await res.json();
+                if (!j.success) return;
+                document.getElementById('smsEnabled').checked = !!j.semaphore_sms_enabled;
+                document.getElementById('smsApiKey').value = j.semaphore_api_key || '';
+                document.getElementById('smsSenderName').value = j.semaphore_sender_name || 'SEMAPHORE';
+            } catch (e) { console.warn(e); }
+        }
+
+        async function saveSmsSettings() {
+            const saveBtn = document.getElementById('saveSmsBtn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+            
+            try {
+                const body = {
+                    semaphore_sms_enabled: document.getElementById('smsEnabled').checked,
+                    semaphore_api_key: document.getElementById('smsApiKey').value,
+                    semaphore_sender_name: document.getElementById('smsSenderName').value
+                };
+                const res = await fetch(api + '/notifications.php?action=save_sms_settings', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const j = await res.json();
+                if (j.success) {
+                    alert('SMS settings saved successfully.');
+                } else {
+                    alert(j.message || 'Failed to save SMS settings.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error connecting to backend API.');
+            } finally {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        async function sendTestSms() {
+            const testBtn = document.getElementById('sendTestSmsBtn');
+            const originalText = testBtn.textContent;
+            const number = document.getElementById('testSmsNumber').value.trim();
+            const message = document.getElementById('testSmsMessage').value.trim();
+            
+            if (!number) {
+                alert('Please enter a phone number to send the test SMS.');
+                return;
+            }
+            
+            testBtn.textContent = 'Sending...';
+            testBtn.disabled = true;
+            
+            try {
+                const body = { phone_number: number, message: message };
+                const res = await fetch(api + '/notifications.php?action=send_test_sms', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const j = await res.json();
+                if (j.success) {
+                    alert('Test SMS sent successfully via Semaphore.');
+                } else {
+                    alert('Error: ' + (j.message || 'Verification failed. Please check your API key and mobile number.'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error connecting to SMS service gateway.');
+            } finally {
+                testBtn.textContent = originalText;
+                testBtn.disabled = false;
+            }
+        }
 
         async function loadBroadcast() {
             try {

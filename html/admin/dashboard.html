@@ -14,6 +14,39 @@
         .priority-item:last-child { border-bottom: none; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
         .layer-toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-subtle); }
+
+        /* Weather animations */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes cloud-drift {
+            0% { transform: translateX(0px); }
+            50% { transform: translateX(6px); }
+            100% { transform: translateX(0px); }
+        }
+        @keyframes rain-drip {
+            0% { transform: translateY(-4px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(8px); opacity: 0; }
+        }
+        @keyframes lightning-flash {
+            0%, 90%, 100% { opacity: 0.2; }
+            92%, 96% { opacity: 1; }
+        }
+        .weather-icon-sun { animation: spin-slow 12s linear infinite; transform-origin: center; }
+        .weather-icon-cloud { animation: cloud-drift 4s ease-in-out infinite; }
+        .weather-icon-rain-1 { animation: rain-drip 1.2s infinite linear; }
+        .weather-icon-rain-2 { animation: rain-drip 1.2s infinite linear 0.4s; }
+        .weather-icon-rain-3 { animation: rain-drip 1.2s infinite linear 0.8s; }
+        .weather-icon-bolt { animation: lightning-flash 3s infinite; }
+
+        /* Modal Animation */
+        @keyframes scaleUp {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-scale-up { animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     </style>
 </head>
 <body>
@@ -105,9 +138,10 @@
                 </div>
             </div>
 
-            <!-- Distribution Map & Live Feed (Placeholders matching Figure 7) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-top: var(--space-lg);" class="animate-fade-in">
-                <div class="card" style="padding: 0; overflow: hidden;">
+            <!-- Distribution Map & Live Feed Stack -->
+            <div style="display: grid; grid-template-columns: 2fr 1.2fr; gap: var(--space-lg); margin-top: var(--space-lg);" class="animate-fade-in">
+                <!-- Map Column -->
+                <div class="card" style="padding: 0; overflow: hidden; margin: 0;">
                     <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
                         <div>
                             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-subtle);">Live hazard feed</div>
@@ -119,20 +153,61 @@
                             <a href="weather-monitoring.html" class="btn btn-sm btn-primary">Weather dashboard</a>
                         </div>
                     </div>
-                    <div id="hazardMap" style="height: 320px;"></div>
+                    <div id="hazardMap" style="height: 520px;"></div>
                 </div>
-                <div class="card">
-                    <div class="card-title">Response Teams</div>
-                    <div id="responseTeamsBody" style="display: flex; gap: 12px; flex-direction: column;">
-                        <div style="font-size: 13px; color: var(--text-subtle);">Loading…</div>
+                <!-- Right Stack Column -->
+                <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
+                    <!-- Response Teams Card -->
+                    <div class="card" style="margin: 0;">
+                        <div class="card-title">Response Teams</div>
+                        <div id="responseTeamsBody" style="display: flex; gap: 12px; flex-direction: column;">
+                            <div style="font-size: 13px; color: var(--text-subtle);">Loading…</div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: center;">
+                            <div id="readinessScore" style="font-size: 24px; font-weight: 700;">—</div>
+                            <div style="font-size: 11px; color: var(--text-subtle);">Response Readiness Score</div>
+                        </div>
                     </div>
-                    <div style="margin-top: 20px; text-align: center;">
-                        <div id="readinessScore" style="font-size: 24px; font-weight: 700;">—</div>
-                        <div style="font-size: 11px; color: var(--text-subtle);">Response Readiness Score</div>
+
+                    <!-- Live Weather Monitor Widget -->
+                    <div class="card" style="margin: 0; background: linear-gradient(135deg, rgba(23, 43, 77, 0.95), rgba(9, 21, 40, 0.95)); color: #fff; border: none; overflow: hidden; position: relative;">
+                        <div class="card-title" style="color: #fff; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; margin-bottom: 12px;">
+                            <span>Live Weather Monitor</span>
+                            <span class="badge" style="background: rgba(0, 199, 230, 0.2); color: #00c7e6; border: 1px solid rgba(0, 199, 230, 0.4); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">Daet Center</span>
+                        </div>
+                        <div id="weatherMonitorBody" style="display: flex; align-items: center; justify-content: space-between; min-height: 80px;">
+                            <div style="font-size: 13px; color: rgba(255,255,255,0.7);">Synchronizing weather data...</div>
+                        </div>
+                    </div>
+
+                    <!-- Proof of Delivery Feed Card -->
+                    <div class="card" style="margin: 0;">
+                        <div class="card-title">
+                            <span>Proof of Delivery Feed</span>
+                            <span class="badge badge-success">Received</span>
+                        </div>
+                        <div id="podFeedBody" style="display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+                            <div style="font-size: 13px; color: var(--text-subtle); text-align: center; padding: 20px;">Fetching recent delivery reports...</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Delivery Verification Receipt Modal -->
+    <div id="deliveryModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(9, 30, 66, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div class="card animate-scale-up" style="max-width: 500px; width: 90%; margin: auto; padding: 24px; position: relative; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); background: #fff; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text);">Delivery Verification Receipt</h3>
+                <button onclick="closeDeliveryModal()" style="background: none; border: none; cursor: pointer; color: var(--text-subtle); padding: 4px;">
+                    <svg style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2;"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="deliveryModalContent" style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -184,6 +259,10 @@
                     cachedWeather = weather.success ? weather.rows : [];
                     cachedHazards = hazards.success ? (hazards.hazards || []) : [];
                     renderHazardMap(reports.reports || [], weather.success ? weather.rows : []);
+
+                    // Render custom updates
+                    populatePODFeed();
+                    fetchWeatherMonitor();
                 }
 
                 if (priority.success) {
@@ -346,6 +425,191 @@
             });
             const data = await res.json();
             await ReliefUI.alert(data.message || (data.success ? 'Restock request submitted.' : 'Restock request failed.'));
+        }
+
+        // Custom Dashboard Enhancements Helpers
+        function getWeatherSVG(condition) {
+            const c = (condition || '').toLowerCase();
+            
+            // Clear / Sunny
+            if (c.includes('clear') || c.includes('sunny')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <circle cx="32" cy="32" r="14" fill="#ffb800" class="weather-icon-sun" />
+                    <g stroke="#ffb800" stroke-width="3" stroke-linecap="round" class="weather-icon-sun">
+                        <line x1="32" y1="8" x2="32" y2="14" />
+                        <line x1="32" y1="50" x2="32" y2="56" />
+                        <line x1="8" y1="32" x2="14" y2="32" />
+                        <line x1="50" y1="32" x2="56" y2="32" />
+                        <line x1="15" y1="15" x2="19.2" y2="19.2" />
+                        <line x1="44.8" y1="44.8" x2="49" y2="49" />
+                        <line x1="15" y1="49" x2="19.2" y2="44.8" />
+                        <line x1="44.8" y1="19.2" x2="49" y2="15" />
+                    </g>
+                </svg>`;
+            }
+            
+            // Clouds / Partly cloudy / Overcast
+            if (c.includes('cloud') || c.includes('overcast') || c.includes('fog')) {
+                const isFog = c.includes('fog');
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    ${isFog ? '' : '<circle cx="22" cy="26" r="10" fill="#ffe082" />'}
+                    <path d="M46 38c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 23 26 19 20 19c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 35.4 1 38.4 1 42c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#eceff1" class="weather-icon-cloud" />
+                    ${isFog ? `
+                    <g stroke="#cfd8dc" stroke-width="3" stroke-linecap="round">
+                        <line x1="12" y1="46" x2="52" y2="46" class="weather-icon-cloud" style="animation-delay: 0.5s;" />
+                        <line x1="16" y1="52" x2="48" y2="52" class="weather-icon-cloud" />
+                    </g>` : ''}
+                </svg>`;
+            }
+            
+            // Thunderstorm
+            if (c.includes('thunderstorm') || c.includes('storm')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <path d="M46 34c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 19 26 15 20 15c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 31.4 1 34.4 1 38c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#78909c" class="weather-icon-cloud" />
+                    <polygon points="28,42 22,52 28,52 24,62 36,48 29,48" fill="#ffeb3b" class="weather-icon-bolt" />
+                </svg>`;
+            }
+            
+            // Rain / Drizzle / Showers
+            if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <path d="M46 32c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 17 26 13 20 13c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 29.4 1 32.4 1 36c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#b0bec5" class="weather-icon-cloud" />
+                    <g stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="16" y1="46" x2="14" y2="52" class="weather-icon-rain-1" />
+                        <line x1="26" y1="46" x2="24" y2="52" class="weather-icon-rain-2" />
+                        <line x1="36" y1="46" x2="34" y2="52" class="weather-icon-rain-3" />
+                    </g>
+                </svg>`;
+            }
+            
+            // Default Fallback
+            return `
+            <svg viewBox="0 0 64 64" width="60" height="60">
+                <circle cx="32" cy="28" r="12" fill="none" stroke="#cfd8dc" stroke-width="4" />
+                <path d="M32 40v8" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round" />
+            </svg>`;
+        }
+
+        async function fetchWeatherMonitor() {
+            try {
+                const res = await fetch('../../php/api/weather.php?action=get_weather&latitude=14.1167&longitude=122.95', { credentials: 'include' });
+                const data = await res.json();
+                if (data.success && data.weather) {
+                    const w = data.weather;
+                    const floodBadgeColor = w.flood_risk_level === 'EXTREME' ? 'var(--danger)' : (w.flood_risk_level === 'HIGH' ? '#ff8b00' : (w.flood_risk_level === 'MODERATE' ? '#0052cc' : 'var(--success)'));
+                    document.getElementById('weatherMonitorBody').innerHTML = `
+                    <div style="display: flex; gap: 16px; align-items: center; width: 100%;">
+                        <div style="flex-shrink: 0; background: rgba(255,255,255,0.06); border-radius: 12px; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
+                            ${getWeatherSVG(w.weather)}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: baseline; gap: 6px;">
+                                <span style="font-size: 26px; font-weight: 700; color: #fff;">${w.temperature != null ? w.temperature.toFixed(1) + '°C' : '—'}</span>
+                                <span style="font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 600;">${w.weather || 'Unknown'}</span>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 10px;">
+                                <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; color: #fff;">Hum: ${w.humidity != null ? w.humidity + '%' : '—'}</span>
+                                <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; color: #fff;">Wind: ${w.wind_speed != null ? w.wind_speed + ' m/s' : '—'}</span>
+                                <span style="background: ${floodBadgeColor}; padding: 2px 6px; border-radius: 10px; font-weight: 600; color: #fff;">Flood: ${w.flood_risk_level || 'LOW'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    document.getElementById('weatherMonitorBody').innerHTML = `<div style="font-size: 13px; color: rgba(255,255,255,0.6);">Weather monitoring offline.</div>`;
+                }
+            } catch (err) {
+                document.getElementById('weatherMonitorBody').innerHTML = `<div style="font-size: 13px; color: rgba(255,255,255,0.6);">Failed to fetch weather.</div>`;
+            }
+        }
+
+        function populatePODFeed() {
+            const receivedReports = (cachedReports || []).filter(r => r.status === 'relief_received');
+            const feedBody = document.getElementById('podFeedBody');
+            if (receivedReports.length === 0) {
+                feedBody.innerHTML = '<div style="font-size: 12px; color: var(--text-subtle); text-align: center; padding: 20px;">No completed deliveries verified yet.</div>';
+            } else {
+                feedBody.innerHTML = receivedReports.map(r => `
+                    <div class="priority-item animate-fade-in" style="cursor: pointer; padding: 10px; background: #f4f5f7; border-radius: 6px; border-bottom: none; transition: transform 0.2s, background-color 0.2s; border-left: 4px solid var(--success); display: flex; align-items: center; justify-content: space-between;" onclick="openDeliveryModal(${r.id})">
+                        <div style="flex: 1; padding-right: 8px;">
+                            <div style="font-weight: 600; font-size: 13px; color: var(--text);">${r.barangay_name}</div>
+                            <div style="font-size: 11px; color: var(--text-subtle); margin-top: 2px;">
+                                ${r.disaster_type} · Confirmed: ${r.delivery_confirmed_at ? new Date(r.delivery_confirmed_at).toLocaleDateString() : 'Recent'}
+                            </div>
+                        </div>
+                        <div style="flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
+                            ${r.proof_of_delivery_photo ? '<svg style="width: 14px; height: 14px; color: var(--success); fill: none; stroke: currentColor; stroke-width: 2;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>' : ''}
+                            ${r.delivery_signature_data ? '<svg style="width: 14px; height: 14px; color: var(--info); fill: none; stroke: currentColor; stroke-width: 2;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>' : ''}
+                            <span style="font-size: 11px; font-weight: 600; color: var(--primary);">View</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function openDeliveryModal(reportId) {
+            const r = cachedReports.find(x => x.id === reportId);
+            if (!r) return;
+            
+            const modal = document.getElementById('deliveryModal');
+            const content = document.getElementById('deliveryModalContent');
+            
+            let photoHTML = `<div style="text-align: center; color: var(--text-subtle); padding: 20px; background: #f4f5f7; border-radius: 8px; font-size: 12px; border: 1px dashed var(--border);">No photo proof uploaded</div>`;
+            if (r.proof_of_delivery_photo) {
+                photoHTML = `
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px;">Confirmation Photo Proof:</div>
+                    <img src="${r.proof_of_delivery_photo}" style="width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.05);" />
+                </div>`;
+            }
+            
+            let sigHTML = `<div style="text-align: center; color: var(--text-subtle); padding: 12px; background: #f4f5f7; border-radius: 8px; font-size: 12px; border: 1px dashed var(--border);">No digital signature recorded</div>`;
+            if (r.delivery_signature_data) {
+                sigHTML = `
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px;">Receiver's Digital Signature:</div>
+                    <div style="background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center;">
+                        <img src="${r.delivery_signature_data}" style="max-width: 100%; height: 75px; object-fit: contain;" />
+                    </div>
+                </div>`;
+            }
+            
+            content.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px; font-size: 13px;">
+                    <div>
+                        <strong style="color: var(--text-subtle);">District / Barangay:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${r.barangay_name}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Disaster Type:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${r.disaster_type}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Report Reporter:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${r.submitted_by || 'Barangay Official'}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Confirmed On:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${r.delivery_confirmed_at ? new Date(r.delivery_confirmed_at).toLocaleString() : 'Recent'}</div>
+                    </div>
+                </div>
+                
+                ${photoHTML}
+                ${sigHTML}
+                
+                <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+                    <button class="btn" style="background: #f4f5f7; color: var(--text); border: 1px solid var(--border);" onclick="closeDeliveryModal()">Close Receipt</button>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeDeliveryModal() {
+            document.getElementById('deliveryModal').style.display = 'none';
         }
     </script>
 </body>

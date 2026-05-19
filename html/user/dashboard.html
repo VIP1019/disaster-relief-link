@@ -10,6 +10,115 @@
         .logo-box { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-weight: bold; }
         .status-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; }
         .batch-id { font-family: monospace; color: var(--text-subtle); font-size: 12px; }
+
+        /* Weather animations */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes cloud-drift {
+            0% { transform: translateX(0px); }
+            50% { transform: translateX(6px); }
+            100% { transform: translateX(0px); }
+        }
+        @keyframes rain-drip {
+            0% { transform: translateY(-4px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(8px); opacity: 0; }
+        }
+        @keyframes lightning-flash {
+            0%, 90%, 100% { opacity: 0.2; }
+            92%, 96% { opacity: 1; }
+        }
+        .weather-icon-sun { animation: spin-slow 12s linear infinite; transform-origin: center; }
+        .weather-icon-cloud { animation: cloud-drift 4s ease-in-out infinite; }
+        .weather-icon-rain-1 { animation: rain-drip 1.2s infinite linear; }
+        .weather-icon-rain-2 { animation: rain-drip 1.2s infinite linear 0.4s; }
+        .weather-icon-rain-3 { animation: rain-drip 1.2s infinite linear 0.8s; }
+        .weather-icon-bolt { animation: lightning-flash 3s infinite; }
+
+        /* Modal Animation */
+        @keyframes scaleUp {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-scale-up { animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Carousel styling */
+        .carousel-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            width: 100%;
+            display: flex;
+        }
+        .carousel-slides {
+            display: flex;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
+            height: 100%;
+        }
+        .carousel-slide {
+            flex: 0 0 100%;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .carousel-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--border);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+        .carousel-nav-btn:hover {
+            background: #ffffff !important;
+            box-shadow: var(--shadow-md) !important;
+            transform: translateY(-50%) scale(1.05) !important;
+        }
+        .carousel-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .carousel-dot.active {
+            background: var(--primary);
+            width: 16px;
+            border-radius: 4px;
+        }
+
+        /* Pulse critical indicator */
+        @keyframes pulse-critical {
+            0% { box-shadow: 0 0 0 0 rgba(255, 86, 48, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 86, 48, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 86, 48, 0); }
+        }
+        .pulse-indicator-critical {
+            animation: pulse-critical 2s infinite;
+            background: linear-gradient(135deg, rgba(255, 86, 48, 0.03), rgba(255, 86, 48, 0.08));
+            border-color: rgba(255, 86, 48, 0.3) !important;
+        }
     </style>
 </head>
 <body>
@@ -33,8 +142,44 @@
                             <div style="font-size: 11px; color: var(--text-subtle);" id="userBarangay">Daet</div>
                         </div>
                     </div>
-                </div>
             </header>
+            <!-- Interactive Grid: Active Incidents & Weather Monitor -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-lg); margin-bottom: 24px;" class="animate-fade-in">
+                <!-- Column 1: Active Incidents Carousel -->
+                <div class="card" style="margin: 0; display: flex; flex-direction: column; min-height: 280px; position: relative; min-width: 0;">
+                    <div class="card-title" style="margin-bottom: 12px;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <svg class="icon" style="color: var(--danger);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>
+                            Active Emergency Incidents
+                        </span>
+                        <span class="badge badge-danger" id="activeIncidentsBadge">0 Active</span>
+                    </div>
+                    <div id="carouselWrapper" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+                        <!-- Dynamically populated carousel -->
+                        <div style="text-align: center; color: var(--text-subtle); padding: 40px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+                            <svg style="width: 48px; height: 48px; color: var(--success); fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <div>
+                                <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main);">Barangay Operations Stable</h4>
+                                <p style="font-size: 13px; color: var(--text-subtle); margin-top: 4px;">No unresolved incidents reported in your district.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+ 
+                <!-- Column 2: Animated Weather Widget -->
+                <div class="card" style="margin: 0; background: linear-gradient(135deg, rgba(23, 43, 77, 0.95), rgba(9, 21, 40, 0.95)); color: #fff; border: none; overflow: hidden; position: relative; min-height: 280px; display: flex; flex-direction: column; min-width: 0;">
+                    <div class="card-title" style="color: #fff; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 8px; margin-bottom: 12px;">
+                        <span>Live Weather Monitor</span>
+                        <span class="badge" style="background: rgba(0, 199, 230, 0.2); color: #00c7e6; border: 1px solid rgba(0, 199, 230, 0.4); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;" id="weatherBarangayName">Daet Center</span>
+                    </div>
+                    <div id="weatherMonitorBody" style="display: flex; align-items: center; justify-content: space-between; flex: 1;">
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.7);">Synchronizing weather data...</div>
+                    </div>
+                </div>
+            </div>
 
             <div class="metrics-grid animate-fade-in">
                 <div class="metric-card" style="border-left-color: var(--primary);">
@@ -130,36 +275,650 @@
         </main>
     </div>
 
+    <!-- Delivery Verification Receipt Modal -->
+    <div id="deliveryModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(9, 30, 66, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div class="card animate-scale-up" style="max-width: 500px; width: 90%; margin: auto; padding: 24px; position: relative; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); background: #fff; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main);">Delivery Verification Receipt</h3>
+                <button onclick="closeDeliveryModal()" style="background: none; border: none; cursor: pointer; color: var(--text-subtle); padding: 4px;">
+                    <svg style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2;"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="deliveryModalContent" style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery Signature Modal (for confirming received aid) -->
+    <div id="podModal" style="display:none; position:fixed; inset:0; background:rgba(9, 30, 66, 0.5); backdrop-filter: blur(4px); z-index:10001; align-items:center; justify-content:center; padding:24px;">
+        <div class="card animate-scale-up" style="background:#fff; border-radius:12px; max-width:480px; width:100%; padding:24px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); border: 1px solid var(--border);">
+            <h3 style="margin-bottom:8px; font-weight:700; color:var(--text-main);">Confirm Relief Received</h3>
+            <p style="font-size:13px; color:var(--text-subtle); margin-bottom:16px;">Upload a delivery receipt photo and/or sign below when aid reaches your barangay hall.</p>
+            <input type="hidden" id="podReportId">
+            <div class="form-group">
+                <label class="form-label">Delivery Photo</label>
+                <input type="file" id="podPhoto" accept="image/*" class="form-control" style="background:#fff;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Digital Signature</label>
+                <canvas id="podSignature" width="400" height="140" style="width:100%; border:1px solid var(--border); border-radius:6px; touch-action:none; background:#fafbfc;"></canvas>
+                <button type="button" class="btn btn-sm" style="margin-top:8px; border:1px solid var(--border); background:#f4f5f7; font-size:12px;" id="podClearSig">Clear Signature</button>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                <button type="button" class="btn" style="border:1px solid var(--border); background:#f4f5f7;" id="podCancelBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="podSubmitBtn">Submit Proof</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/relief-ajax.js"></script>
+    <script src="../js/report-structured.js"></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
+        let cachedReports = [];
+        let currentSlide = 0;
+        let podDrawing = false;
+        let podCtx = null;
+
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'barangay_official') return;
             document.getElementById('userName').textContent = user.full_name;
             document.getElementById('userBarangay').textContent = user.barangay_name || '';
             document.getElementById('userInitials').textContent = user.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+            
+            // Set up modal controls
+            document.getElementById('podSubmitBtn').addEventListener('click', submitPod);
+            document.getElementById('podCancelBtn').addEventListener('click', closePodModal);
+            document.getElementById('podClearSig').addEventListener('click', clearPodSignature);
+            
             loadUserData();
         });
 
         async function loadUserData() {
             try {
                 const [reports, notifications] = await Promise.all([
-                    fetch('../../php/api/reports.php?action=list_user', { credentials: 'include' }).then(r => r.json()),
-                    fetch('../../php/api/notifications.php?action=list_user', { credentials: 'include' }).then(r => r.json())
+                    ReliefAjax.reports.listUser(),
+                    ReliefAjax.get('notifications.php', 'list_user')
                 ]);
 
                 if (reports.success) {
-                    document.getElementById('totalReports').textContent = reports.reports.length;
-                    const latest = reports.reports[0];
+                    cachedReports = reports.reports || [];
+                    document.getElementById('totalReports').textContent = cachedReports.length;
+                    
+                    const latest = cachedReports[0];
                     if (latest) {
                         document.getElementById('currentStatus').textContent = latest.status.replace('_', ' ').toUpperCase();
+                    } else {
+                        document.getElementById('currentStatus').textContent = 'STABLE';
                     }
+
+                    // Count of received reports
+                    const receivedCount = cachedReports.filter(r => r.status === 'relief_received').length;
+                    document.getElementById('reliefConfirmed').textContent = receivedCount;
+
+                    // Initialize features
+                    renderCarousel();
+                    populateReliefConfirmationTable();
+                    fetchBarangayWeather();
                 }
                 
                 if (notifications.success) {
                     document.getElementById('notificationCount').textContent = notifications.notifications.length;
+                    populateNotifications(notifications.notifications.slice(0, 3));
                 }
             } catch (error) { console.error('Dashboard error:', error); }
+        }
+
+        function populateNotifications(notifs) {
+            const container = document.getElementById('latestNotifications');
+            if (!container) return;
+            if (notifs.length === 0) {
+                container.innerHTML = '<div style="font-size: 12px; color: var(--text-subtle); padding: 10px; text-align: center;">No new alerts.</div>';
+                return;
+            }
+            container.innerHTML = notifs.map(n => {
+                const isUrgent = n.title.toLowerCase().includes('urgent') || n.title.toLowerCase().includes('transit') || n.title.toLowerCase().includes('emergency');
+                const borderClr = isUrgent ? 'var(--warning)' : 'var(--success)';
+                return `
+                    <div style="padding: 10px; border-radius: 6px; background: #f4f5f7; border-left: 3px solid ${borderClr};">
+                        <div style="font-size: 13px; font-weight: 600;">${esc(n.title)}</div>
+                        <div style="font-size: 11px; color: var(--text-subtle); margin-top: 2px;">${esc(n.message)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getSeverityColor(sev) {
+            const s = (sev || '').toLowerCase();
+            if (s === 'critical') return 'var(--danger)';
+            if (s === 'high') return 'var(--warning)';
+            if (s === 'medium') return 'var(--primary)';
+            return 'var(--success)';
+        }
+
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        }
+
+        function renderStepper(status) {
+            const steps = [
+                { id: 'submitted', label: 'Submitted' },
+                { id: 'reviewed', label: 'Reviewed' },
+                { id: 'prioritized', label: 'Prioritized' },
+                { id: 'relief_distributed', label: 'Dispatched' }
+            ];
+
+            const statusIndex = steps.findIndex(s => s.id === status);
+            
+            return `
+            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; margin-top: 8px; padding: 4px 0;">
+                <div style="position: absolute; top: 12px; left: 0; right: 0; height: 3px; background: #dfe1e6; z-index: 1;">
+                    <div style="height: 100%; width: ${statusIndex > 0 ? (statusIndex / (steps.length - 1)) * 100 : 0}%; background: var(--success); transition: width 0.3s ease;"></div>
+                </div>
+                ${steps.map((step, idx) => {
+                    const isCompleted = idx < statusIndex;
+                    const isActive = idx === statusIndex;
+                    
+                    let bg = '#dfe1e6';
+                    let border = 'none';
+                    let color = 'var(--text-subtle)';
+                    let size = '22px';
+                    let fontW = '500';
+                    let labelColor = 'var(--text-subtle)';
+                    
+                    if (isCompleted) {
+                        bg = 'var(--success)';
+                        color = '#fff';
+                        labelColor = 'var(--success)';
+                        fontW = '600';
+                    } else if (isActive) {
+                        bg = 'var(--primary)';
+                        color = '#fff';
+                        labelColor = 'var(--primary)';
+                        fontW = '700';
+                    }
+
+                    return `
+                    <div style="display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; flex: 1;">
+                        <div class="${isActive && step.id === 'relief_distributed' ? 'pulse-hazard' : ''}" style="width: ${size}; height: ${size}; border-radius: 50%; background: ${bg}; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: ${color}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                            ${isCompleted ? '✓' : idx + 1}
+                        </div>
+                        <span style="font-size: 10px; font-weight: ${fontW}; color: ${labelColor}; margin-top: 4px; white-space: nowrap;">${step.label}</span>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        function renderCarousel() {
+            const unresolved = cachedReports.filter(r => r.status !== 'relief_received');
+            const badge = document.getElementById('activeIncidentsBadge');
+            badge.textContent = `${unresolved.length} Active`;
+            
+            const wrapper = document.getElementById('carouselWrapper');
+            if (unresolved.length === 0) {
+                wrapper.innerHTML = `
+                    <div style="text-align: center; color: var(--text-subtle); padding: 40px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+                        <svg style="width: 48px; height: 48px; color: var(--success); fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <div>
+                            <h4 style="font-size: 15px; font-weight: 600; color: var(--text-main);">Barangay Operations Stable</h4>
+                            <p style="font-size: 13px; color: var(--text-subtle); margin-top: 4px;">No unresolved incidents reported in your district.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // Generate Slides HTML
+            let slidesHTML = unresolved.map(r => {
+                const isCritical = r.severity_level === 'critical';
+                const pulseClass = isCritical ? 'pulse-indicator-critical' : '';
+                const when = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '—';
+                
+                // Parse structured description for a cleaner display
+                let cleanDescription = 'No detailed log provided.';
+                if (r.description) {
+                    const parsed = ReliefStructuredReport.parseDescription(r.description);
+                    if (parsed.isStructured) {
+                        const parts = [];
+                        if (parsed.notes && parsed.notes.trim()) {
+                            parts.push(parsed.notes.trim());
+                        }
+                        const lf = parsed.lifelines;
+                        if (lf) {
+                            const issues = [];
+                            if (lf.power && lf.power !== 'Operational') issues.push(`Power: ${lf.power}`);
+                            if (lf.water && lf.water !== 'Operational') issues.push(`Water: ${lf.water}`);
+                            if (lf.road && lf.road !== 'Passable') issues.push(`Road: ${lf.road}`);
+                            if (issues.length > 0) parts.push(`🔌 Utilities: ${issues.join(', ')}`);
+                        }
+                        const req = parsed.requests;
+                        if (req) {
+                            const items = [];
+                            if (parseInt(req.food) > 0) items.push(`${req.food} Food`);
+                            if (parseInt(req.hygiene) > 0) items.push(`${req.hygiene} Hygiene`);
+                            if (parseInt(req.water) > 0) items.push(`${req.water} Water`);
+                            if (items.length > 0) parts.push(`📦 Requested: ${items.join(', ')}`);
+                        }
+                        cleanDescription = parts.join(' | ') || 'Structured incident report logged.';
+                    } else {
+                        cleanDescription = parsed.notes || parsed.raw || 'No detailed log provided.';
+                    }
+                }
+                
+                return `
+                <div class="carousel-slide ${pulseClass}" style="padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: #ffffff; flex-shrink: 0; width: 100%; box-sizing: border-box;">
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; flex: 1;">
+                        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="badge" style="background: ${getSeverityColor(r.severity_level)}; color: #fff;">${r.severity_level.toUpperCase()}</span>
+                                    <span style="font-size: 11px; color: var(--text-subtle);">${when}</span>
+                                </div>
+                                <h3 style="font-size: 18px; margin: 8px 0 4px 0; font-weight: 700; color: var(--text-main);">${esc(r.disaster_type)}</h3>
+                                <p style="font-size: 12px; color: var(--text-subtle); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; height: 50px; margin-bottom: 8px;">${esc(cleanDescription)}</p>
+                            </div>
+                            <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-main); font-weight: 600;">
+                                <span style="display: flex; align-items: center; gap: 4px;">👥 <strong>${r.affected_families}</strong> Families</span>
+                                <span style="display: flex; align-items: center; gap: 4px;">🏚️ <strong>${r.damaged_houses}</strong> Houses</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; justify-content: space-between; border-left: 1px solid var(--border); padding-left: 16px;">
+                            <div>
+                                <div style="font-size: 10px; font-weight: 600; color: var(--text-subtle); text-transform: uppercase;">Evacuation Suggestion</div>
+                                <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-top: 4px;">${esc(r.suggested_evacuation_center_name || 'Awaiting Command Center Direction')}</div>
+                                <div style="font-size: 11px; color: var(--text-subtle); margin-top: 2px;">${esc(r.suggested_evacuation_center_address || '')}</div>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <div style="font-size: 10px; font-weight: 600; color: var(--text-subtle); text-transform: uppercase;">Progression Status Pipeline</div>
+                                ${renderStepper(r.status)}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Nav buttons and dot indicators
+            const hasMultiple = unresolved.length > 1;
+            wrapper.innerHTML = `
+                <div class="carousel-container" id="incidentCarousel">
+                    <div class="carousel-slides" id="carouselSlides" style="gap: 16px;">
+                        ${slidesHTML}
+                    </div>
+                    ${hasMultiple ? `
+                    <button id="carouselPrevBtn" class="carousel-nav-btn" style="left: -12px; top: 50%;">&lt;</button>
+                    <button id="carouselNextBtn" class="carousel-nav-btn" style="right: -12px; top: 50%;">&gt;</button>
+                    ` : ''}
+                </div>
+                ${hasMultiple ? `
+                <div class="carousel-dots" id="carouselDots">
+                    ${unresolved.map((_, i) => `<span class="carousel-dot ${i === 0 ? 'active' : ''}" data-idx="${i}"></span>`).join('')}
+                </div>
+                ` : ''}
+            `;
+
+            // Active sliding logic
+            if (hasMultiple) {
+                currentSlide = 0;
+                const slides = document.getElementById('carouselSlides');
+                const nextBtn = document.getElementById('carouselNextBtn');
+                const prevBtn = document.getElementById('carouselPrevBtn');
+                const dots = document.querySelectorAll('.carousel-dot');
+
+                const updateSlide = (idx) => {
+                    currentSlide = idx;
+                    const offset = currentSlide * (slides.children[0].clientWidth + 16);
+                    slides.style.transform = `translateX(-${offset}px)`;
+                    
+                    dots.forEach((dot, dIdx) => {
+                        if (dIdx === currentSlide) dot.classList.add('active');
+                        else dot.classList.remove('active');
+                    });
+                };
+
+                nextBtn.addEventListener('click', () => {
+                    let next = currentSlide + 1;
+                    if (next >= unresolved.length) next = 0;
+                    updateSlide(next);
+                });
+
+                prevBtn.addEventListener('click', () => {
+                    let prev = currentSlide - 1;
+                    if (prev < 0) prev = unresolved.length - 1;
+                    updateSlide(prev);
+                });
+
+                dots.forEach(dot => {
+                    dot.addEventListener('click', () => {
+                        const idx = parseInt(dot.getAttribute('data-idx'), 10);
+                        updateSlide(idx);
+                    });
+                });
+
+                // Window resize correction
+                window.addEventListener('resize', () => {
+                    updateSlide(currentSlide);
+                });
+            }
+        }
+
+        async function fetchBarangayWeather() {
+            try {
+                const geoRes = await ReliefAjax.reports.myBarangayGeo();
+                if (geoRes.success && geoRes.barangay) {
+                    const b = geoRes.barangay;
+                    document.getElementById('weatherBarangayName').textContent = b.name;
+                    
+                    const res = await fetch(`../../php/api/weather.php?action=get_weather&latitude=${b.latitude}&longitude=${b.longitude}&barangay_id=${b.id}`, { credentials: 'include' });
+                    const data = await res.json();
+                    
+                    if (data.success && data.weather) {
+                        const w = data.weather;
+                        const floodBadgeColor = w.flood_risk_level === 'EXTREME' ? 'var(--danger)' : (w.flood_risk_level === 'HIGH' ? '#ff8b00' : (w.flood_risk_level === 'MODERATE' ? '#0052cc' : 'var(--success)'));
+                        
+                        document.getElementById('weatherMonitorBody').innerHTML = `
+                        <div style="display: flex; gap: 16px; align-items: center; width: 100%;">
+                            <div style="flex-shrink: 0; background: rgba(255,255,255,0.06); border-radius: 12px; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
+                                ${getWeatherSVG(w.weather)}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: baseline; gap: 6px;">
+                                    <span style="font-size: 26px; font-weight: 700; color: #fff;">${w.temperature != null ? w.temperature.toFixed(1) + '°C' : '—'}</span>
+                                    <span style="font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 600;">${w.weather || 'Unknown'}</span>
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 10px;">
+                                    <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; color: #fff;">Hum: ${w.humidity != null ? w.humidity + '%' : '—'}</span>
+                                    <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 10px; color: #fff;">Wind: ${w.wind_speed != null ? w.wind_speed + ' m/s' : '—'}</span>
+                                    <span style="background: ${floodBadgeColor}; padding: 2px 6px; border-radius: 10px; font-weight: 600; color: #fff;">Flood: ${w.flood_risk_level || 'LOW'}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    } else {
+                        document.getElementById('weatherMonitorBody').innerHTML = `<div style="font-size: 13px; color: rgba(255,255,255,0.6); text-align: center; width: 100%;">Weather monitor connection offline.</div>`;
+                    }
+                } else {
+                    document.getElementById('weatherBarangayName').textContent = 'Daet Center';
+                    document.getElementById('weatherMonitorBody').innerHTML = `<div style="font-size: 13px; color: rgba(255,255,255,0.6); text-align: center; width: 100%;">Unlinked Profile coordinates.</div>`;
+                }
+            } catch (err) {
+                document.getElementById('weatherMonitorBody').innerHTML = `<div style="font-size: 13px; color: rgba(255,255,255,0.6); text-align: center; width: 100%;">Failed to load local weather details.</div>`;
+            }
+        }
+
+        function getWeatherSVG(condition) {
+            const c = (condition || '').toLowerCase();
+            if (c.includes('clear') || c.includes('sunny')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <circle cx="32" cy="32" r="14" fill="#ffb800" class="weather-icon-sun" />
+                    <g stroke="#ffb800" stroke-width="3" stroke-linecap="round" class="weather-icon-sun">
+                        <line x1="32" y1="8" x2="32" y2="14" />
+                        <line x1="32" y1="50" x2="32" y2="56" />
+                        <line x1="8" y1="32" x2="14" y2="32" />
+                        <line x1="50" y1="32" x2="56" y2="32" />
+                        <line x1="15" y1="15" x2="19.2" y2="19.2" />
+                        <line x1="44.8" y1="44.8" x2="49" y2="49" />
+                        <line x1="15" y1="49" x2="19.2" y2="44.8" />
+                        <line x1="44.8" y1="19.2" x2="49" y2="15" />
+                    </g>
+                </svg>`;
+            }
+            if (c.includes('cloud') || c.includes('overcast') || c.includes('fog')) {
+                const isFog = c.includes('fog');
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    ${isFog ? '' : '<circle cx="22" cy="26" r="10" fill="#ffe082" />'}
+                    <path d="M46 38c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 23 26 19 20 19c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 35.4 1 38.4 1 42c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#eceff1" class="weather-icon-cloud" />
+                    ${isFog ? `
+                    <g stroke="#cfd8dc" stroke-width="3" stroke-linecap="round">
+                        <line x1="12" y1="46" x2="52" y2="46" class="weather-icon-cloud" style="animation-delay: 0.5s;" />
+                        <line x1="16" y1="52" x2="48" y2="52" class="weather-icon-cloud" />
+                    </g>` : ''}
+                </svg>`;
+            }
+            if (c.includes('thunderstorm') || c.includes('storm')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <path d="M46 34c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 19 26 15 20 15c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 31.4 1 34.4 1 38c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#78909c" class="weather-icon-cloud" />
+                    <polygon points="28,42 22,52 28,52 24,62 36,48 29,48" fill="#ffeb3b" class="weather-icon-bolt" />
+                </svg>`;
+            }
+            if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) {
+                return `
+                <svg viewBox="0 0 64 64" width="60" height="60">
+                    <path d="M46 32c0-5.5-4.5-10-10-10-1 0-2 0-3 .2C31 17 26 13 20 13c-7.2 0-13 5.8-13 13 0 .7.1 1.4.2 2.1C3.1 29.4 1 32.4 1 36c0 4.4 3.6 8 8 8h37c5.5 0 10-4.5 10-10z" fill="#b0bec5" class="weather-icon-cloud" />
+                    <g stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="16" y1="46" x2="14" y2="52" class="weather-icon-rain-1" />
+                        <line x1="26" y1="46" x2="24" y2="52" class="weather-icon-rain-2" />
+                        <line x1="36" y1="46" x2="34" y2="52" class="weather-icon-rain-3" />
+                    </g>
+                </svg>`;
+            }
+            return `
+            <svg viewBox="0 0 64 64" width="60" height="60">
+                <circle cx="32" cy="28" r="12" fill="none" stroke="#cfd8dc" stroke-width="4" />
+                <path d="M32 40v8" stroke="#cfd8dc" stroke-width="4" stroke-linecap="round" />
+            </svg>`;
+        }
+
+        function populateReliefConfirmationTable() {
+            const body = document.getElementById('reliefConfirmationBody');
+            const deliveryReports = cachedReports.filter(r => r.status === 'relief_distributed' || r.status === 'relief_received');
+            
+            if (deliveryReports.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-subtle); padding: var(--space-md);">No relief operations batches reported.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = deliveryReports.map(r => {
+                const isReceived = r.status === 'relief_received';
+                const batchYear = r.submitted_at ? new Date(r.submitted_at).getFullYear() : 2026;
+                const batchId = `RL-${batchYear}-${String(r.id).padStart(3, '0')}`;
+                
+                const badge = isReceived 
+                    ? `<span class="badge badge-success">Delivered</span>` 
+                    : `<span class="badge badge-warning">In Transit</span>`;
+                
+                const timeStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '—';
+                
+                let viewBtn = '';
+                if (isReceived) {
+                    viewBtn = `<button class="btn" style="padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); background: #f4f5f7;" onclick="openDeliveryModal(${r.id})">View Details</button>`;
+                } else {
+                    viewBtn = `<button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px;" onclick="openPodModal(${r.id})">Confirm Sign</button>`;
+                }
+
+                return `
+                <tr>
+                    <td><span class="batch-id">${batchId}</span></td>
+                    <td>${badge}</td>
+                    <td>${r.affected_families}</td>
+                    <td>${timeStr}</td>
+                    <td>${viewBtn}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Delivery Detail Receipt modal functions
+        function openDeliveryModal(reportId) {
+            const r = cachedReports.find(x => x.id === reportId);
+            if (!r) return;
+
+            const modal = document.getElementById('deliveryModal');
+            const content = document.getElementById('deliveryModalContent');
+
+            let photoHTML = `<div style="text-align: center; color: var(--text-subtle); padding: 20px; background: #f4f5f7; border-radius: 8px; font-size: 12px; border: 1px dashed var(--border);">No photo confirmation uploaded.</div>`;
+            if (r.proof_of_delivery_photo) {
+                photoHTML = `
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px;">Confirmation Photo Proof:</div>
+                    <img src="${r.proof_of_delivery_photo}" style="width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.05);" />
+                </div>`;
+            }
+
+            let sigHTML = `<div style="text-align: center; color: var(--text-subtle); padding: 12px; background: #f4f5f7; border-radius: 8px; font-size: 12px; border: 1px dashed var(--border);">No digital signature recorded.</div>`;
+            if (r.delivery_signature_data) {
+                sigHTML = `
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px;">Receiver's Digital Signature:</div>
+                    <div style="background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center;">
+                        <img src="${r.delivery_signature_data}" style="max-width: 100%; height: 75px; object-fit: contain;" />
+                    </div>
+                </div>`;
+            }
+
+            content.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px; font-size: 13px;">
+                    <div>
+                        <strong style="color: var(--text-subtle);">District / Barangay:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${esc(r.barangay_name)}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Disaster Type:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${esc(r.disaster_type)}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Confirmed By:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">Barangay Official</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-subtle);">Timestamp Confirmed:</strong>
+                        <div style="font-weight: 600; margin-top: 2px;">${r.delivery_confirmed_at ? new Date(r.delivery_confirmed_at).toLocaleString() : 'Recent'}</div>
+                    </div>
+                </div>
+                
+                ${photoHTML}
+                ${sigHTML}
+                
+                <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+                    <button class="btn" style="background: #f4f5f7; color: var(--text-main); border: 1px solid var(--border);" onclick="closeDeliveryModal()">Close Receipt</button>
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeDeliveryModal() {
+            document.getElementById('deliveryModal').style.display = 'none';
+        }
+
+        // Canvas Signature pad implementation for confirms
+        function initPodSignature() {
+            const canvas = document.getElementById('podSignature');
+            if (!canvas) return;
+            podCtx = canvas.getContext('2d');
+            podCtx.strokeStyle = '#172b4d';
+            podCtx.lineWidth = 2.5;
+            
+            const pos = (e) => {
+                const r = canvas.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+                const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+                return { x: x * (canvas.width / r.width), y: y * (canvas.height / r.height) };
+            };
+            
+            const down = (e) => { 
+                e.preventDefault(); 
+                podDrawing = true; 
+                const p = pos(e); 
+                podCtx.beginPath(); 
+                podCtx.moveTo(p.x, p.y); 
+            };
+            
+            const move = (e) => {
+                if (!podDrawing) return;
+                e.preventDefault();
+                const p = pos(e);
+                podCtx.lineTo(p.x, p.y);
+                podCtx.stroke();
+            };
+            
+            const up = () => { podDrawing = false; };
+            
+            canvas.addEventListener('mousedown', down);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', up);
+            canvas.addEventListener('mouseleave', up);
+            canvas.addEventListener('touchstart', down, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', up);
+        }
+
+        function clearPodSignature() {
+            const canvas = document.getElementById('podSignature');
+            if (canvas && podCtx) podCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function openPodModal(reportId) {
+            document.getElementById('podReportId').value = reportId;
+            document.getElementById('podPhoto').value = '';
+            clearPodSignature();
+            setTimeout(initPodSignature, 50); // Small timeout to ensure visual canvas has rendered correctly
+            document.getElementById('podModal').style.display = 'flex';
+        }
+
+        function closePodModal() {
+            document.getElementById('podModal').style.display = 'none';
+        }
+
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function canvasHasInk() {
+            const canvas = document.getElementById('podSignature');
+            if (!canvas || !podCtx) return false;
+            const data = podCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+            for (let i = 3; i < data.length; i += 4) {
+                if (data[i] > 0) return true;
+            }
+            return false;
+        }
+
+        async function submitPod() {
+            const reportId = +document.getElementById('podReportId').value;
+            const file = document.getElementById('podPhoto').files[0];
+            let proof_photo = null;
+            let signature_data = null;
+            
+            if (file) {
+                proof_photo = await readFileAsDataUrl(file);
+            }
+            if (canvasHasInk()) {
+                signature_data = document.getElementById('podSignature').toDataURL('image/png');
+            }
+            
+            if (!proof_photo && !signature_data) {
+                alert('Verification required: upload a photo or sign in the box.');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('podSubmitBtn');
+            submitBtn.classList.add('btn-loading');
+            
+            try {
+                const data = await ReliefAjax.reports.confirmDelivery({ report_id: reportId, proof_photo, signature_data });
+                if (data.success) {
+                    closePodModal();
+                    loadUserData();
+                    alert(data.message || 'Delivery confirmation recorded. MDRRMO has been updated.');
+                } else {
+                    alert(data.message || 'Confirmation upload failed.');
+                }
+            } catch (err) {
+                alert('A network error occurred. Please try again.');
+            } finally {
+                submitBtn.classList.remove('btn-loading');
+            }
         }
     </script>
 </body>

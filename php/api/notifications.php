@@ -78,6 +78,23 @@ try {
                     $data['message'] ?? '',
                     $data['report_id'] ?? null
                 );
+                
+                // Semaphore SMS Hook for manual targeted notification
+                if ($result['success'] && !empty($data['message'])) {
+                    require_once __DIR__ . '/../classes/SmsService.php';
+                    $userId = (int) ($data['user_id'] ?? 0);
+                    $db = new Database();
+                    $conn = $db->getConnection();
+                    $q = "SELECT phone_number FROM users WHERE id = ?";
+                    $st = $conn->prepare($q);
+                    $st->bind_param('i', $userId);
+                    $st->execute();
+                    $uRes = $st->get_result()->fetch_assoc();
+                    if ($uRes && !empty($uRes['phone_number'])) {
+                        SmsService::sendSms($uRes['phone_number'], $data['message']);
+                    }
+                }
+                
                 http_response_code($result['success'] ? 201 : 400);
                 echo json_encode($result);
             } else {
@@ -121,14 +138,96 @@ try {
             if ($request_method === 'POST' && Auth::isAdmin()) {
                 $data = json_decode(file_get_contents('php://input'), true) ?: [];
                 $settings = new SystemSettings();
+                
+                $active = !empty($data['active']);
+                $title = $data['title'] ?? '';
+                $body = $data['body'] ?? '';
+                $url = $data['protocol_url'] ?? '';
+                
                 $settings->setEmergencyBroadcast([
-                    'active' => !empty($data['active']),
-                    'title' => $data['title'] ?? '',
-                    'body' => $data['body'] ?? '',
-                    'protocol_url' => $data['protocol_url'] ?? '',
+                    'active' => $active,
+                    'title' => $title,
+                    'body' => $body,
+                    'protocol_url' => $url,
                 ]);
+
+                // Semaphore SMS Broadcast Hook if emergency broadcast is newly activated
+                if ($active && !empty($body)) {
+                    require_once __DIR__ . '/../classes/SmsService.php';
+                    $officials = $notification->getBarangayOfficialRecipients();
+                    $smsMessage = "EMERGENCY BROADCAST: " . $title . " - " . $body;
+                    if (!empty($url)) {
+                        $smsMessage .= " Info: " . $url;
+                    }
+                    foreach ($officials as $official) {
+                        if (!empty($official['phone_number'])) {
+                            SmsService::sendSms($official['phone_number'], $smsMessage);
+                        }
+                    }
+                }
+
                 http_response_code(200);
                 echo json_encode(['success' => true, 'broadcast' => $settings->getEmergencyBroadcast()]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'get_sms_settings':
+            if ($request_method === 'GET' && Auth::isAdmin()) {
+                $settings = new SystemSettings();
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'semaphore_sms_enabled' => $settings->get('semaphore_sms_enabled', '0') === '1',
+                    'semaphore_api_key' => $settings->get('semaphore_api_key', ''),
+                    'semaphore_sender_name' => $settings->get('semaphore_sender_name', 'SEMAPHORE')
+                ]);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'save_sms_settings':
+            if ($request_method === 'POST' && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $settings = new SystemSettings();
+                
+                $enabled = !empty($data['semaphore_sms_enabled']) ? '1' : '0';
+                $apiKey = $data['semaphore_api_key'] ?? '';
+                $senderName = $data['semaphore_sender_name'] ?? 'SEMAPHORE';
+                
+                $settings->set('semaphore_sms_enabled', $enabled);
+                $settings->set('semaphore_api_key', $apiKey);
+                $settings->set('semaphore_sender_name', $senderName);
+                
+                http_response_code(200);
+                echo json_encode(['success' => true, 'message' => 'SMS Settings saved successfully.']);
+            } else {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            }
+            break;
+
+        case 'send_test_sms':
+            if ($request_method === 'POST' && Auth::isAdmin()) {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+                $phone = $data['phone_number'] ?? '';
+                $msg = $data['message'] ?? 'Test SMS from ReliefLink Daet Command Center.';
+                
+                if (empty($phone)) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'message' => 'Phone number is required.']);
+                    exit;
+                }
+                
+                require_once __DIR__ . '/../classes/SmsService.php';
+                $res = SmsService::sendSms($phone, $msg);
+                
+                http_response_code($res['success'] ? 200 : 400);
+                echo json_encode($res);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Forbidden']);

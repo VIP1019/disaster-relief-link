@@ -101,21 +101,44 @@
                     </div>
 
                     <div class="card" style="margin-top: 24px;">
-                        <div class="card-title">New Distribution Record</div>
+                        <div class="card-title">
+                            <span>Shipment Package Builder</span>
+                            <span class="badge badge-info" id="shipmentCountBadge">0 Items</span>
+                        </div>
                         <form id="distributionForm">
                             <div class="form-group">
-                                <label class="form-label">Barangay</label>
+                                <label class="form-label">Barangay Destination</label>
                                 <select id="distBarangay" class="form-control" required></select>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Resource Item</label>
-                                <select id="distItem" class="form-control" required></select>
+                            
+                            <div style="border: 1px dashed var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px; background: #fafbfc;">
+                                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 8px; display: flex; justify-content: space-between;">
+                                    <span>Add Supplies to Shipment</span>
+                                    <span style="color: var(--primary); font-weight: 600;" id="lblAvailableStock"></span>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                                    <div style="flex: 2;">
+                                        <select id="distItem" class="form-control" style="font-size: 13px;"></select>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <input type="number" id="distQty" class="form-control" placeholder="Qty" min="1" style="font-size: 13px;">
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-primary" id="btnAddSupplyLine" style="height: 38px; display: flex; align-items: center; justify-content: center; padding: 0 16px;">
+                                            <svg class="icon" style="width:16px;height:16px;stroke-width:3;margin:0;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Quantity</label>
-                                <input type="number" id="distQty" class="form-control" required>
+
+                            <div style="margin-bottom: 20px;">
+                                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 8px;">Staged Supplies Package</div>
+                                <div id="stagedSuppliesList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                                    <div class="text-subtle" style="font-size:12px;text-align:center;padding:24px 0;border:1px dashed var(--border);border-radius:8px;background:#fff;color:var(--text-subtle);">No supplies added to shipment package yet.</div>
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-block">Confirm Deployment</button>
+
+                            <button type="submit" class="btn btn-primary btn-block" id="btnConfirmShipment" disabled>Confirm Deployment</button>
                         </form>
                     </div>
                 </div>
@@ -148,14 +171,130 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="../js/relief-sidebar.js"></script>
     <script>
+        let stagedItems = [];
+
+        function renderStagedItems() {
+            const container = document.getElementById('stagedSuppliesList');
+            const countBadge = document.getElementById('shipmentCountBadge');
+            const btnConfirm = document.getElementById('btnConfirmShipment');
+            
+            countBadge.textContent = `${stagedItems.length} Item(s)`;
+            
+            if (stagedItems.length === 0) {
+                container.innerHTML = `<div class="text-subtle" style="font-size:12px;text-align:center;padding:24px 0;border:1px dashed var(--border);border-radius:8px;background:#fff;color:var(--text-subtle);">No supplies added to shipment package yet.</div>`;
+                btnConfirm.disabled = true;
+                btnConfirm.textContent = 'Confirm Deployment';
+                return;
+            }
+            
+            btnConfirm.disabled = false;
+            btnConfirm.textContent = `Confirm Deployment (${stagedItems.length} supplies)`;
+            
+            container.innerHTML = stagedItems.map((item, index) => {
+                return `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f4f5f7; border:1px solid var(--border); border-radius:6px; padding:8px 12px; font-size:13px;">
+                    <div>
+                        <div style="font-weight:600;">${item.item_name}</div>
+                        <div style="font-size:11px; color:var(--text-subtle);">${item.quantity} units requested</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link" style="color:var(--danger); padding:4px 8px; border:none; background:none; cursor:pointer;" onclick="removeStagedItem(${index})">
+                        <svg class="icon" style="width:16px;height:16px;stroke:var(--danger);margin:0;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+                `;
+            }).join('');
+        }
+
+        window.removeStagedItem = function(index) {
+            stagedItems.splice(index, 1);
+            renderStagedItems();
+        };
+
+        const updateStockLabel = () => {
+            const select = document.getElementById('distItem');
+            const lbl = document.getElementById('lblAvailableStock');
+            if (!lbl) return;
+            if (!select || !select.value) {
+                lbl.textContent = '';
+                return;
+            }
+            const invId = parseInt(select.value, 10);
+            const avail = window.__invMap ? window.__invMap[invId] : 0;
+            lbl.textContent = `Available: ${avail} units`;
+        };
+
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await ReliefSidebar.mount();
             if (!user || user.user_type !== 'admin') return;
+            
             await loadData();
             await loadDistributions();
+            
+            document.getElementById('distItem').addEventListener('change', updateStockLabel);
+            
+            // Parse URL Parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramBarangay = urlParams.get('barangay');
+            const paramQty = urlParams.get('quantity');
+            
+            if (paramBarangay) {
+                const selectBrgy = document.getElementById('distBarangay');
+                for (let i = 0; i < selectBrgy.options.length; i++) {
+                    if (selectBrgy.options[i].value === paramBarangay) {
+                        selectBrgy.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (paramQty) {
+                document.getElementById('distQty').value = paramQty;
+            }
+
             document.getElementById('btnGlobalView').addEventListener('click', openGlobalView);
             document.getElementById('btnMapView').addEventListener('click', openMapView);
             document.getElementById('btnDeployStatus').addEventListener('click', openDeployModal);
+            
+            // Add dynamic staging button event listener
+            document.getElementById('btnAddSupplyLine').addEventListener('click', () => {
+                const select = document.getElementById('distItem');
+                const invId = parseInt(select.value, 10);
+                const qtyInput = document.getElementById('distQty');
+                const qty = parseInt(qtyInput.value, 10);
+                
+                if (isNaN(invId) || invId <= 0) {
+                    ReliefUI.alert({ title: 'Select Item', message: 'Please select a valid item first.' });
+                    return;
+                }
+                if (isNaN(qty) || qty <= 0) {
+                    ReliefUI.alert({ title: 'Invalid Quantity', message: 'Please enter a valid positive quantity.' });
+                    return;
+                }
+
+                const itemName = select.options[select.selectedIndex].text.split('(')[0].trim();
+                const avail = window.__invMap ? window.__invMap[invId] : 0;
+                
+                const existing = stagedItems.find(item => item.inventory_id === invId);
+                const stagedQty = existing ? existing.quantity : 0;
+                const totalRequested = stagedQty + qty;
+
+                if (totalRequested > avail) {
+                    ReliefUI.alert({ title: 'Insufficient Stock', message: `Only ${avail} units available in stock. You have already staged ${stagedQty} and tried to add ${qty}.` });
+                    return;
+                }
+
+                if (existing) {
+                    existing.quantity = totalRequested;
+                } else {
+                    stagedItems.push({
+                        inventory_id: invId,
+                        item_name: itemName,
+                        quantity: qty
+                    });
+                }
+
+                qtyInput.value = '';
+                renderStagedItems();
+            });
         });
 
         async function loadData() {
@@ -167,16 +306,19 @@
 
                 if (brgyRes.success && brgyRes.barangays) {
                     const select = document.getElementById('distBarangay');
-                    select.innerHTML = brgyRes.barangays.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+                    select.innerHTML = '<option value="" disabled selected>Select Barangay...</option>' + 
+                                     brgyRes.barangays.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
                 }
 
                 if (invRes.success && invRes.inventory) {
                     window.__invMap = {};
                     const select = document.getElementById('distItem');
-                    select.innerHTML = invRes.inventory.map(i => {
-                        window.__invMap[i.id] = parseInt(i.quantity, 10);
-                        return `<option value="${i.id}">${i.item_name} (${i.quantity} avail)</option>`;
-                    }).join('');
+                    select.innerHTML = '<option value="" disabled selected>Select Supply Item...</option>' + 
+                                     invRes.inventory.map(i => {
+                                         window.__invMap[i.id] = parseInt(i.quantity, 10);
+                                         return `<option value="${i.id}">${i.item_name} (${i.quantity} avail)</option>`;
+                                     }).join('');
+                    updateStockLabel();
                 }
             } catch (error) { console.error('Load error:', error); }
         }
@@ -304,24 +446,19 @@
 
         document.getElementById('distributionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button');
-            btn.disabled = true;
-            btn.classList.add('btn-loading');
-
-            const invId = parseInt(document.getElementById('distItem').value, 10);
-            const qty = parseInt(document.getElementById('distQty').value, 10);
-            const avail = window.__invMap ? window.__invMap[invId] : 0;
-            if (qty > avail) {
-                await ReliefUI.alert({ title: 'Insufficient Stock', message: `Error: Only ${avail} units available in stock. Entered: ${qty}.` });
-                btn.disabled = false;
-                btn.classList.remove('btn-loading');
+            if (stagedItems.length === 0) {
+                await ReliefUI.alert({ title: 'Empty Shipment', message: 'Please add at least one resource item to the staged shipment package.' });
                 return;
             }
 
-            const formData = {
+            const btn = document.getElementById('btnConfirmShipment');
+            btn.disabled = true;
+            btn.classList.add('btn-loading');
+
+            const payload = {
                 barangay_name: document.getElementById('distBarangay').value,
-                inventory_id: invId,
-                quantity: qty
+                items: stagedItems,
+                notes: 'Multi-item dynamic logistics shipment deployment'
             };
 
             try {
@@ -329,23 +466,21 @@
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
-                    await ReliefUI.alert({ title: 'Deployment confirmed', message: 'Distribution record created successfully.' });
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
-                    document.getElementById('distQty').value = '';
+                    await ReliefUI.alert({ title: 'Deployment confirmed', message: data.message || 'Shipment registered and inventory deducted successfully.' });
+                    stagedItems = [];
+                    renderStagedItems();
                     await loadDistributions();
                     await loadData();
                 } else {
-                    await ReliefUI.alert({ title: 'Error', message: data.message || 'Could not record distribution.' });
-                    btn.disabled = false;
-                    btn.classList.remove('btn-loading');
+                    await ReliefUI.alert({ title: 'Deployment Failed', message: data.message || 'Could not record distribution.' });
                 }
             } catch (error) {
                 await ReliefUI.alert({ title: 'Error', message: 'System error. Please try again.' });
+            } finally {
                 btn.disabled = false;
                 btn.classList.remove('btn-loading');
             }
